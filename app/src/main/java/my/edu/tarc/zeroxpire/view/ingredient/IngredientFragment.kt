@@ -170,11 +170,8 @@ class IngredientFragment : Fragment(), IngredientClickListener {
                                 val addedDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(dateAddedString)
                                 val dateAddedInMillis = addedDate?.time ?: 0L
                                 val ingredientImage = jsonIngredient.getString("ingredientImage").replace("&amp;", "&")
-//                                val decodedIngredientImage = URLDecoder.decode(ingredientImage, "UTF-8")
                                 Log.d("decode", ingredientImage)
-
-                                // Convert the Base64 image string to a ByteArray
-                                val imageByteArray = convertImageStringToByteArray(ingredientImage)
+                                val ingredientCategory = jsonIngredient.getString("ingredientCategory")
                                 val isDelete = jsonIngredient.getInt("isDelete")
                                 val goalId = jsonIngredient.optInt("goalId", 0)
                                 val userId = jsonIngredient.getString("userId")
@@ -188,8 +185,10 @@ class IngredientFragment : Fragment(), IngredientClickListener {
                                             Date(expiryDateInMillis),
                                             Date(dateAddedInMillis),
                                             ingredientImage,
+                                            ingredientCategory,
                                             isDelete,
-                                            null // Set goalId to null when it is 0
+                                            null,
+                                            userId// Set goalId to null when it is 0
                                         )
                                     } else {
                                         ingredient = Ingredient(
@@ -198,8 +197,10 @@ class IngredientFragment : Fragment(), IngredientClickListener {
                                             Date(expiryDateInMillis),
                                             Date(dateAddedInMillis),
                                             ingredientImage,
+                                            ingredientCategory,
                                             isDelete,
-                                            goalId // Set goalId to its value when it is not 0
+                                            goalId, // Set goalId to its value when it is not 0
+                                            userId
                                         )
                                     }
                                     ingredientViewModel.addIngredient(ingredient)

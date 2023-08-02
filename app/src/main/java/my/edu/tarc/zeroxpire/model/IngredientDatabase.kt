@@ -10,7 +10,7 @@ import my.edu.tarc.zeroxpire.BitmapTypeConverter
 import my.edu.tarc.zeroxpire.DateConverter
 import my.edu.tarc.zeroxpire.view.ingredient.ImageConverters
 
-@Database(entities = [Ingredient::class], version = 2, exportSchema = false)
+@Database(entities = [Ingredient::class], version = 1, exportSchema = false)
 @TypeConverters(DateConverter::class, BitmapTypeConverter::class)
 abstract class IngredientDatabase : RoomDatabase() {
 

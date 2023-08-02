@@ -28,6 +28,8 @@ data class Ingredient(
     val expiryDate: Date,
     val dateAdded: Date?,
     val ingredientImage: String?,
+    val ingredientCategory: String,
     val isDelete: Int,
-    val ingredientGoalId: Int?
+    val ingredientGoalId: Int?,
+    val userId: String,
 )

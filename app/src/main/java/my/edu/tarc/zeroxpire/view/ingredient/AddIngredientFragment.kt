@@ -130,45 +130,6 @@ class AddIngredientFragment : Fragment() {
         }
     }
 
-    private fun loadCategory() {
-        val url: String =
-            getString(R.string.url_server) + getString(R.string.url_read_ingredientCategory)
-        val jsonObjectRequest = JsonObjectRequest(
-            Request.Method.GET, url, null,
-            { response ->
-                try {
-                    if (response != null) {
-                        val strResponse = response.toString()
-                        val jsonResponse = JSONObject(strResponse)
-                        val jsonArray: JSONArray = jsonResponse.getJSONArray("records")
-                        val size: Int = jsonArray.length()
-                        for (i in 0 until size) {
-                            val jsonCategory: JSONObject = jsonArray.getJSONObject(i)
-                            val categoryId = jsonCategory.getInt("categoryId")
-                            val categoryName = jsonCategory.getString("categoryName")
-                            categoryList.add(categoryName)
-                        }
-                    }
-                } catch (e: UnknownHostException) {
-                    Log.d("Category cannot be loaded", "Unknown Host: ${e.message}")
-                } catch (e: Exception) {
-                    Log.d("Category cannot be loaded", "Response: ${e.message}")
-                }
-            },
-            { error ->
-                Log.d("Category cannot be loaded", "Error: ${error.message}")
-            }
-        )
-
-        jsonObjectRequest.retryPolicy = DefaultRetryPolicy(
-            DefaultRetryPolicy.DEFAULT_TIMEOUT_MS,
-            0,
-            1f
-        )
-
-        WebDB.getInstance(requireActivity()).addToRequestQueue(jsonObjectRequest)
-    }
-
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 1 && resultCode == RESULT_OK) {
@@ -219,6 +180,8 @@ class AddIngredientFragment : Fragment() {
     @SuppressLint("SimpleDateFormat")
     private fun storeIngredient() {
         val ingredientName = binding.enterIngredientName.text.toString()
+        val ingredientCategory = binding.chooseCategory.text.toString()
+        Log.d("ingredientCategory", ingredientCategory)
 
         if (ingredientName.isNotEmpty() && selectedDate != null) {
             // Get the current date
@@ -244,8 +207,10 @@ class AddIngredientFragment : Fragment() {
                                 selectedDate!!,
                                 currentDate,
                                 imageUrl,
+                                ingredientCategory,
                                 0,
-                                null
+                                null,
+                                auth.currentUser?.uid!!
                             )
 
                             if (isNetworkAvailable()) {
@@ -298,14 +263,19 @@ class AddIngredientFragment : Fragment() {
     private fun addIngredient(ingredient: Ingredient) {
         val expiryDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
             .format(ingredient.expiryDate)
-//        val imageBase64 = Base64.encodeToString(ingredient.ingredientImage, Base64.DEFAULT)
-        val encodedImageUrl = URLEncoder.encode(ingredient.ingredientImage, "UTF-8")
+        val formattedIngredientCategory = if (ingredient.ingredientCategory.contains("&")){
+            ingredient.ingredientCategory.replace("&", "%26")
+        }
+        else{
+            ingredient.ingredientCategory
+        }
         val url = getString(R.string.url_server) + getString(R.string.url_create_ingredient) +
                 "?ingredientName=" + ingredient.ingredientName +
                 "&expiryDate=" + expiryDate +
                 "&ingredientImage=" + URLEncoder.encode(
             ingredient.ingredientImage.toString().substringAfterLast("%2F"), "UTF-8"
-        ) + "&userId=" + auth.currentUser?.uid
+        ) + "&ingredientCategory=" + formattedIngredientCategory  + "&userId=" + auth.currentUser?.uid
+        Log.d("url", url)
 
         val jsonObjectRequest = JsonObjectRequest(
             Request.Method.GET, url, null,
