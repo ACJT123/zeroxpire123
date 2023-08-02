@@ -1,7 +1,18 @@
 package my.edu.tarc.zeroxpire
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
+import android.media.MediaParser
+import android.media.MediaPlayer
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -10,6 +21,10 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.impl.Observable
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.TaskStackBuilder
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.NavController
@@ -49,6 +64,10 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
 
     private val selectedIngredients: MutableList<Ingredient> = mutableListOf()
 
+    val CHANNEL_ID = "channelID"
+    val CHANNEL_NAME = "channelName"
+    val NOTIF_ID = 0
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,12 +76,28 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
         setContentView(binding.root)
 
 
+        createNotifChannel()
+
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Testing")
+            .setContentText("Just a testing")
+            .setSmallIcon(R.drawable.logo2)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .build()
+
+        val notificationManager = NotificationManagerCompat.from(this)
+
+
         // Internet connection
         //TODO: cannot be done currently due to the lead of navigation state lost
 
 
         // Initialize Firebase Auth
         auth = FirebaseAuth.getInstance()
+
+        if(auth.currentUser?.uid != null){
+            notificationManager.notify(NOTIF_ID, notification)
+        }
 
 
         //initialize ViewModel
@@ -125,6 +160,29 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
 //                    binding.bottomAppBar.fabCradleMargin = -50f
                 }
             }
+        }
+
+
+    }
+
+    private fun createNotifChannel() {
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
+            val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_DEFAULT).apply {
+                lightColor = Color.GREEN
+                enableLights(true)
+
+            }
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(channel)
+        }
+
+        var notificationSound = MediaPlayer.create(this, R.raw.notification)
+        notificationSound.start()
+
+        notificationSound.setOnCompletionListener {
+            notificationSound.release()
+            notificationSound = null
         }
 
 
