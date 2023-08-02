@@ -139,7 +139,8 @@ class IngredientFragment : Fragment(), IngredientClickListener {
         progressDialog?.setMessage("Loading...")
         progressDialog?.setCancelable(false)
         progressDialog?.show()
-        val url: String = getString(R.string.url_server) + getString(R.string.url_read_ingredient)
+        val url: String = getString(R.string.url_server) + getString(R.string.url_read_ingredient) + "?userId=${auth.currentUser?.uid}"
+        Log.d("uid", auth.currentUser?.uid.toString())
         val jsonObjectRequest = JsonObjectRequest(
             Request.Method.GET, url, null,
             { response ->
@@ -220,7 +221,7 @@ class IngredientFragment : Fragment(), IngredientClickListener {
                     Log.d("ContactRepository", "Unknown Host: ${e.message}")
                     progressDialog?.dismiss()
                 } catch (e: Exception) {
-                    Log.d("ContactRepository", "Response: ${e.message}")
+                    Log.d("Cannot load", "Response: ${e.message}")
                     progressDialog?.dismiss()
                 }
             },

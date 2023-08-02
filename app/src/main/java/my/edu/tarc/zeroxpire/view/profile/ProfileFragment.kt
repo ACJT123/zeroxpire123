@@ -117,7 +117,6 @@ class ProfileFragment : Fragment() {
         Firebase.auth.currentUser?.delete()?.addOnCompleteListener { task ->
             if(task.isSuccessful){
                 findNavController().navigate(R.id.loginFragment)
-                findNavController().clearBackStack(R.id.loginFragment)
                 lifecycleScope.launch(Dispatchers.IO) {
                     ingredientDatabase.deleteAllIngredient()
                 }

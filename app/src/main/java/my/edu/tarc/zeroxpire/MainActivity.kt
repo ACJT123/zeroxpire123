@@ -29,7 +29,7 @@ import my.edu.tarc.zeroxpire.view.ingredient.ScannerFragment
 import my.edu.tarc.zeroxpire.viewmodel.GoalViewModel
 import my.edu.tarc.zeroxpire.viewmodel.IngredientViewModel
 
-class MainActivity : AppCompatActivity(), IngredientClickListener{
+class MainActivity : AppCompatActivity(), IngredientClickListener {
     private lateinit var binding: ActivityMainBinding
     private lateinit var navController: NavController
 
@@ -72,7 +72,8 @@ class MainActivity : AppCompatActivity(), IngredientClickListener{
         // Initialize IngredientAdapter
         ingredientAdapter = IngredientAdapter(this, goalViewModel)
         // Navigation
-        val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
+        val navHostFragment =
+            supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
         navController = navHostFragment.findNavController()
 
         // Find reference to bottom navigation view
@@ -82,6 +83,8 @@ class MainActivity : AppCompatActivity(), IngredientClickListener{
 
         navView.background = null
         navView.menu.getItem(2).isEnabled = false
+
+        disableBtmNav()
 
         navController.addOnDestinationChangedListener { _, destination, _ ->
             when (destination.id) {
@@ -98,7 +101,7 @@ class MainActivity : AppCompatActivity(), IngredientClickListener{
                 R.id.goalFragment -> {
                     enableBtmNav()
                     binding.fab.setImageResource(R.drawable.baseline_add_24)
-                    binding.fab.setOnClickListener{
+                    binding.fab.setOnClickListener {
 //                        showBottomSheetDialog(ingredientAdapter)
                         navController.navigate(R.id.action_goalFragment_to_createGoalFragment)
                         disableBtmNav()
@@ -107,18 +110,12 @@ class MainActivity : AppCompatActivity(), IngredientClickListener{
                 R.id.recipeFragment -> {
                     enableBtmNav()
                     binding.fab.setImageResource(R.drawable.baseline_book_24)
-                    binding.fab.setOnClickListener{
+                    binding.fab.setOnClickListener {
                         navController.navigate(R.id.action_recipeFragment_to_createRecipe)
                         disableBtmNav()
                     }
                 }
                 R.id.profileFragment -> {
-                    if(auth.currentUser == null){
-                        Toast.makeText(this, "No user", Toast.LENGTH_SHORT).show()
-                        disableBtmNav()
-                        navController.navigate(R.id.loginFragment)
-                        navController.clearBackStack(R.id.loginFragment)
-                    }
 //                    else{
 //                        navController.navigate(R.id.)
 //                        Toast.makeText(this, "User", Toast.LENGTH_SHORT).show()
@@ -129,6 +126,8 @@ class MainActivity : AppCompatActivity(), IngredientClickListener{
                 }
             }
         }
+
+
     }
 
 //    fun showBottomSheetDialog(ingredientAdapter: IngredientAdapter) {
@@ -261,19 +260,18 @@ class MainActivity : AppCompatActivity(), IngredientClickListener{
         }
     }
 
-    private fun requestCameraAndStartScanner(){
-        if(isPermissionGranted(cameraPermission)){
+    private fun requestCameraAndStartScanner() {
+        if (isPermissionGranted(cameraPermission)) {
             startScanner()
-        }
-        else{
+        } else {
             requestCameraPermission()
         }
     }
 
     private fun requestCameraPermission() {
-        when{
-            shouldShowRequestPermissionRationale(cameraPermission) ->{
-                cameraPermissionRequest{
+        when {
+            shouldShowRequestPermissionRationale(cameraPermission) -> {
+                cameraPermissionRequest {
                     openPermissionSetting()
                 }
             }
@@ -283,8 +281,8 @@ class MainActivity : AppCompatActivity(), IngredientClickListener{
         }
     }
 
-    private fun startScanner(){
-        ScannerFragment.startScanner(this){
+    private fun startScanner() {
+        ScannerFragment.startScanner(this) {
         }
     }
 
@@ -338,11 +336,6 @@ class MainActivity : AppCompatActivity(), IngredientClickListener{
 
         Log.d("Ingredients", selectedIngredients.toString())
     }
-
-
-
-
-
 
 
 }
