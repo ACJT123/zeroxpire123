@@ -139,8 +139,8 @@ class ProfileFragment : Fragment() {
     private fun logout(){
         Firebase.auth.signOut()
         disableBtmNav()
-        findNavController().navigate(R.id.action_profileFragment_to_loginFragment)
-        findNavController().clearBackStack(R.id.loginFragment)
+        findNavController().navigate(R.id.loginFragment)
+
     }
 
 

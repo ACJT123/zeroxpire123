@@ -78,12 +78,17 @@ class AddIngredientFragment : Fragment() {
             binding.enterIngredientNameLayout.error = null
         }
 
-        setFragmentResultListener("requestName") { key, bundle ->
+        setFragmentResultListener("requestName") { _, bundle ->
             val result = bundle.getString("name")
             binding.enterIngredientName.setText("$result")
         }
 
-        setFragmentResultListener("requestImage") { key, bundle ->
+        setFragmentResultListener("requestCategory") { _, bundle ->
+            val result = bundle.getString("category")
+            binding.chooseCategory.setText("$result")
+        }
+
+        setFragmentResultListener("requestImage") { _, bundle ->
             val result = bundle.getString("image")
             Glide.with(requireContext())
                 .load(result)

@@ -204,6 +204,7 @@ class IngredientFragment : Fragment(), IngredientClickListener {
                                         )
                                     }
                                     ingredientViewModel.addIngredient(ingredient)
+                                    Log.d("IngredientCategory", ingredient.ingredientCategory)
                                 }
                             }
                         }
@@ -246,19 +247,6 @@ class IngredientFragment : Fragment(), IngredientClickListener {
 
         WebDB.getInstance(requireActivity()).addToRequestQueue(jsonObjectRequest)
     }
-
-    private fun convertImageStringToByteArray(imageString: String): ByteArray {
-        return try {
-            val imageBytes = Base64.decode(imageString, Base64.DEFAULT)
-            val decodedBitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-            val outputStream = ByteArrayOutputStream()
-            decodedBitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
-            outputStream.toByteArray()
-        } catch (e: Exception) {
-            Log.d("ContactRepository", "Error converting image string to byte array: ${e.message}")
-            ByteArray(0)
-        }
-    }
     private fun searchIngredient(adapter: IngredientAdapter) {
         binding.ingredientSearchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String): Boolean {
@@ -283,10 +271,6 @@ class IngredientFragment : Fragment(), IngredientClickListener {
                 return true
             }
         })
-    }
-
-    private fun convertToDate(milliseconds: Long): Date {
-        return Date(milliseconds)
     }
 
     private fun navigateBack() {
@@ -391,6 +375,8 @@ class IngredientFragment : Fragment(), IngredientClickListener {
 
     override fun onIngredientClick(ingredient: Ingredient) {
         findNavController().navigate(R.id.action_ingredientFragment_to_ingredientDetailFragment)
+
+        //pass data to detail fragment
         setFragmentResult("requestName", bundleOf("name" to ingredient.ingredientName))
         setFragmentResult(
             "requestDate", bundleOf(
@@ -398,8 +384,8 @@ class IngredientFragment : Fragment(), IngredientClickListener {
             )
         )
         setFragmentResult("requestId", bundleOf("id" to ingredient.ingredientId))
-        Log.d("imageIngredient", ingredient.ingredientImage.toString())
         setFragmentResult("requestImage", bundleOf("image" to ingredient.ingredientImage))
+        setFragmentResult("requestCategory", bundleOf("category" to ingredient.ingredientCategory))
         disableBtmNav()
     }
 

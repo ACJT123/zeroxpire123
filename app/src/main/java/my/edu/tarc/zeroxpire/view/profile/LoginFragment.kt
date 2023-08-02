@@ -1,6 +1,7 @@
 package my.edu.tarc.zeroxpire.view.profile
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.app.ProgressDialog
 import android.os.Bundle
 import android.util.Log
@@ -138,22 +139,26 @@ class LoginFragment : Fragment() {
             normalLogin()
         }
 
-        navigationBackListeners()
+        navigateBackListeners()
 
     }
 
-    private fun navigationBackListeners() {
-        binding.upBtn.setOnClickListener {
-            navigateBack()
-        }
+    private fun navigateBackListeners() {
         val onBackPressedCallback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                navigateBack()
+                val builder = AlertDialog.Builder(requireContext())
+                builder.setMessage("Are you sure you want to Exit?").setCancelable(false)
+                    .setPositiveButton("Exit") { dialog, id ->
+                        requireActivity().finish()
+                    }.setNegativeButton("Cancel") { dialog, id ->
+                        dialog.dismiss()
+                    }
+                val alert = builder.create()
+                alert.show()
             }
         }
         requireActivity().onBackPressedDispatcher.addCallback(
-            viewLifecycleOwner,
-            onBackPressedCallback
+            viewLifecycleOwner, onBackPressedCallback
         )
     }
 

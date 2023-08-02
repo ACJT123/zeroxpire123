@@ -11,6 +11,8 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -66,9 +68,21 @@ class IngredientDetailFragment : Fragment() {
             binding.chooseExpiryDate.setText(dateString)
         }
 
+        setFragmentResultListener("requestCategory") { _, bundle ->
+            val result = bundle.getString("category")
+            binding.chooseCategory.setText("$result")
+        }
+
+
         setFragmentResultListener("requestId") { _, bundle ->
             val id = bundle.getInt("id", 0) // Use a default value if the key is not found or the value is not an integer
             ingredientId = id
+        }
+
+        setFragmentResultListener("") { _, bundle ->
+            val result = bundle.getString("name")
+            originalName = result
+            binding.enterIngredientName.setText(originalName)
         }
 
         setFragmentResultListener("requestImage") { _, bundle ->
@@ -107,6 +121,7 @@ class IngredientDetailFragment : Fragment() {
             }
         })
 
+        showCategory()
 
         // Button click listeners
         binding.upBtn.setOnClickListener {
@@ -182,6 +197,23 @@ class IngredientDetailFragment : Fragment() {
 
         binding.ingredientImage.setOnClickListener {
             openImagePicker()
+        }
+    }
+
+    private fun showCategory(){
+        val ingredientCategories = resources.getStringArray(R.array.ingredient_categories)
+        val adapter = ArrayAdapter(requireContext(), R.layout.category_list, ingredientCategories)
+        binding.chooseCategory.setAdapter(adapter)
+
+        // Set an item click listener to handle the selected category
+        binding.chooseCategory.onItemClickListener = AdapterView.OnItemClickListener { _, _, position, _ ->
+            val selectedCategory = ingredientCategories[position]
+            Toast.makeText(requireContext(), "Selected category: $selectedCategory", Toast.LENGTH_SHORT).show()
+        }
+
+        // Programmatically open the dropdown list when the user clicks the AutoCompleteTextView
+        binding.chooseCategory.setOnClickListener {
+            binding.chooseCategory.showDropDown()
         }
     }
 
