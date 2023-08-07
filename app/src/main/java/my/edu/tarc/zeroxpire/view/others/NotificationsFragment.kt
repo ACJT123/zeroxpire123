@@ -1,5 +1,6 @@
 package my.edu.tarc.zeroxpire.view.others
 
+import android.graphics.Color
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
@@ -54,6 +55,7 @@ class NotificationsFragment : Fragment() {
         val textView: TextView = binding.daysReminder
         numberPicker.minValue = 1
         numberPicker.maxValue = 30
+
 
         numberPicker.setOnValueChangedListener { _, _, new ->
             textView.text = "Remind you when things are expired within $new days"

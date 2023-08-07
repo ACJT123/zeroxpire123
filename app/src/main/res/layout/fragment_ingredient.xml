@@ -110,7 +110,7 @@
         android:layout_marginTop="20dp"
         android:id="@+id/recyclerview"
         android:layout_width="match_parent"
-        android:layout_height="570dp"
+        android:layout_height="550dp"
         android:layout_below="@id/labels"
         android:scrollbars="vertical"
         tools:listitem="@layout/card_view_design" />

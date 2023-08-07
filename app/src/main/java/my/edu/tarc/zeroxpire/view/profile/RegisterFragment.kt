@@ -2,6 +2,7 @@ package my.edu.tarc.zeroxpire.view.profile
 
 import android.app.ProgressDialog
 import android.os.Bundle
+import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
@@ -10,9 +11,17 @@ import android.widget.Toast
 import androidx.activity.addCallback
 import androidx.core.widget.doAfterTextChanged
 import androidx.navigation.fragment.findNavController
+import com.android.volley.DefaultRetryPolicy
+import com.android.volley.Request
+import com.android.volley.toolbox.JsonObjectRequest
 import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import my.edu.tarc.zeroxpire.R
+import my.edu.tarc.zeroxpire.WebDB
 import my.edu.tarc.zeroxpire.databinding.FragmentRegisterBinding
+import org.json.JSONObject
+import java.lang.Exception
 
 class RegisterFragment : Fragment() {
     private var _binding: FragmentRegisterBinding? = null
@@ -93,6 +102,7 @@ class RegisterFragment : Fragment() {
         auth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener(requireActivity()) { task ->
                 if (task.isSuccessful) {
+                    createUser(task.result.user)
                     if (progressDialog.isShowing) {
                         progressDialog.dismiss()
                     }
@@ -105,6 +115,50 @@ class RegisterFragment : Fragment() {
                     showToast("Failed to create the account.")
                 }
             }
+    }
+
+    private fun createUser(account: FirebaseUser?) {
+        val url = getString(R.string.url_server) + getString(R.string.url_create_user) +
+                "?userId=" + account?.uid +
+                "&userName=" + binding.enterUsername.text +
+                "&stayLoggedIn=" + 1
+
+        Log.d("url", url)
+
+        val jsonObjectRequest = JsonObjectRequest(
+            Request.Method.GET, url, null,
+            { response ->
+                try {
+                    if (response != null) {
+                        val strResponse = response.toString()
+                        val jsonResponse = JSONObject(strResponse)
+                        val success: String = jsonResponse.get("success").toString()
+
+                        if (success == "1") {
+                            Toast.makeText(
+                                requireContext(),
+                                "User has created successfully",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        } else {
+                            Toast.makeText(
+                                requireContext(),
+                                "Failed to login",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.d("Cannot login", "Response: %s".format(e.message.toString()))
+                }
+            },
+            { error ->
+                Log.d("Cannot login .....", "Response : %s".format(error.message.toString()))
+            }
+        )
+        jsonObjectRequest.retryPolicy =
+            DefaultRetryPolicy(DefaultRetryPolicy.DEFAULT_TIMEOUT_MS, 0, 1f)
+        WebDB.getInstance(requireContext()).addToRequestQueue(jsonObjectRequest)
     }
 
     private fun showToast(message: String) {

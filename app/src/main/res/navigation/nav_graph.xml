@@ -19,6 +19,9 @@
         <action
             android:id="@+id/action_ingredientFragment_to_ingredientDetailFragment"
             app:destination="@id/ingredientDetailFragment" />
+        <action
+            android:id="@+id/action_ingredientFragment_to_addIngredientFragment"
+            app:destination="@id/addIngredientFragment" />
     </fragment>
     <fragment
         android:id="@+id/activeGoalFragment"

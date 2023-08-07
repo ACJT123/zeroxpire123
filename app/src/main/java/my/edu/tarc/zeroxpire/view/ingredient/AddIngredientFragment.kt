@@ -3,6 +3,7 @@ package my.edu.tarc.zeroxpire.view.ingredient
 import android.annotation.SuppressLint
 import android.app.Activity.RESULT_OK
 import android.app.DatePickerDialog
+import android.app.ProgressDialog
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -18,6 +19,7 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.ImageView
 import android.widget.Toast
+import androidx.core.net.toUri
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -59,6 +61,9 @@ class AddIngredientFragment : Fragment() {
 
     private var fileUri: Uri? = null
 
+    private var progressDialog: ProgressDialog? = null
+
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -73,28 +78,59 @@ class AddIngredientFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
 
+
         binding.enterIngredientName.doAfterTextChanged {
             // Clear the error when the user starts typing
             binding.enterIngredientNameLayout.error = null
         }
 
-        setFragmentResultListener("requestName") { _, bundle ->
-            val result = bundle.getString("name")
-            binding.enterIngredientName.setText("$result")
+        if(arguments?.isEmpty == false){
+            val recognizedName = arguments?.getString("recognizedIngredientName").toString()
+            binding.enterIngredientName.setText(recognizedName)
+
+            val recognizedDate = arguments?.getString("recognizedExpiryDate").toString()
+            val dateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val parsedDate = dateFormatter.parse(recognizedDate)
+
+            val outputDateFormat = SimpleDateFormat("d/M/yyyy", Locale.getDefault())
+            val formattedDate = parsedDate?.let { outputDateFormat.format(it) }
+            selectedDate = formattedDate?.let { outputDateFormat.parse(it) }
+            binding.chooseExpiryDate.setText(formattedDate)
         }
 
-        setFragmentResultListener("requestCategory") { _, bundle ->
-            val result = bundle.getString("category")
-            binding.chooseCategory.setText("$result")
-        }
 
-        setFragmentResultListener("requestImage") { _, bundle ->
-            val result = bundle.getString("image")
-            Glide.with(requireContext())
-                .load(result)
-                .centerCrop()
-                .into(binding.ingredientImage)
-        }
+
+
+
+
+
+        //image
+        binding.ingredientImage.setPadding(0, 0, 0, 0)
+        binding.ingredientImage.scaleType = ImageView.ScaleType.CENTER_CROP
+        fileUri = arguments?.getParcelable<Uri>("ingredientImage")
+        Log.d("ingredientImage!!", fileUri.toString())
+        Glide.with(requireContext())
+            .load(fileUri)
+            .centerCrop()
+            .into(binding.ingredientImage)
+
+//        setFragmentResultListener("requestName") { _, bundle ->
+//            val result = bundle.getString("name")
+//            binding.enterIngredientName.setText("$result")
+//        }
+//
+//        setFragmentResultListener("requestCategory") { _, bundle ->
+//            val result = bundle.getString("category")
+//            binding.chooseCategory.setText("$result")
+//        }
+//
+//        setFragmentResultListener("requestImage") { _, bundle ->
+//            val result = bundle.getString("image")
+//            Glide.with(requireContext())
+//                .load(result)
+//                .centerCrop()
+//                .into(binding.ingredientImage)
+//        }
 
         binding.chooseExpiryDate.setOnClickListener {
             showDatePickerDialog()
@@ -108,7 +144,7 @@ class AddIngredientFragment : Fragment() {
         }
 
         binding.upBtn.setOnClickListener {
-            findNavController().navigate(R.id.action_addIngredientFragment_to_scannerFragment)
+            findNavController().navigate(R.id.action_addIngredientFragment_to_ingredientFragment)
         }
 
         binding.ingredientImage.setOnClickListener {
@@ -184,6 +220,10 @@ class AddIngredientFragment : Fragment() {
 
     @SuppressLint("SimpleDateFormat")
     private fun storeIngredient() {
+        progressDialog = ProgressDialog(requireContext())
+        progressDialog?.setMessage("Adding...")
+//        progressDialog?.setCancelable(false)
+        progressDialog?.show()
         val ingredientName = binding.enterIngredientName.text.toString()
         val ingredientCategory = binding.chooseCategory.text.toString()
         Log.d("ingredientCategory", ingredientCategory)
@@ -192,10 +232,12 @@ class AddIngredientFragment : Fragment() {
             // Get the current date
             val currentDate = Date()
 
-            val storage = Firebase.storage("gs://zeroxpire.appspot.com")
-            val imageRef = storage.reference.child("ingredientImage/${ingredientName}.jpg")
+            val encodedIngredientName = URLEncoder.encode(ingredientName, "UTF-8")
 
-            // Put the image file into the specified path in Firebase Storage
+            val storage = Firebase.storage("gs://zeroxpire.appspot.com")
+            val imageRef = storage.reference.child("ingredientImage/${encodedIngredientName}.jpg")
+
+
             fileUri?.let { uri ->
                 imageRef.putFile(uri)
                     .addOnSuccessListener { _ ->
@@ -225,13 +267,6 @@ class AddIngredientFragment : Fragment() {
                                 ingredientViewModel.addIngredient(newIngredient)
                             }
 
-                            Toast.makeText(
-                                requireContext(),
-                                "Ingredient is added successfully!",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                            findNavController().navigateUp()
-                            findNavController().navigateUp()
                         }
                     }
                     .addOnFailureListener { exception ->
@@ -294,9 +329,11 @@ class AddIngredientFragment : Fragment() {
                         if (success == "1") {
                             Toast.makeText(
                                 requireContext(),
-                                getString(R.string.delete),
+                                "Ingredient is added successfully!",
                                 Toast.LENGTH_SHORT
                             ).show()
+                            progressDialog?.dismiss()
+                            findNavController().popBackStack()
                         } else {
                             Toast.makeText(
                                 requireContext(),

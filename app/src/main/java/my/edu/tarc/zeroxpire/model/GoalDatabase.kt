@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import my.edu.tarc.zeroxpire.DateConverter
 
-@Database(entities = [Goal::class], version = 1, exportSchema = false)
+@Database(entities = [Goal::class], version = 2, exportSchema = false)
 @TypeConverters(DateConverter::class)
 abstract class GoalDatabase : RoomDatabase() {
 

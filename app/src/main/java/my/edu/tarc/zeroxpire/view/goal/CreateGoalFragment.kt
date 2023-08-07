@@ -23,6 +23,7 @@ import com.android.volley.DefaultRetryPolicy
 import com.android.volley.Request
 import com.android.volley.toolbox.JsonObjectRequest
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.firebase.auth.FirebaseAuth
 import it.xabaras.android.recyclerview.swipedecorator.RecyclerViewSwipeDecorator
 import my.edu.tarc.zeroxpire.R
 import my.edu.tarc.zeroxpire.WebDB
@@ -69,6 +70,8 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
     private var numOfIngredients: Int = 0
 
     private var selectedDate: Date? = null // Variable to store the selected date
+
+    private lateinit var auth: FirebaseAuth
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -81,6 +84,8 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
     }
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        auth = FirebaseAuth.getInstance()
 
         selectedIngredientAdapter = IngredientAdapter(object : IngredientClickListener {
             override fun onIngredientClick(ingredient: Ingredient) {
@@ -139,10 +144,11 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
             .format(targetCompletionDate)
         val url = getString(R.string.url_server) + getString(R.string.url_create_goal) +
                 "?goalName=" + goalName +
-                "&targetCompletionDate=" + targetCompletionDateConverted
+                "&targetCompletionDate=" + targetCompletionDateConverted +
+                "&userId=" + auth.currentUser?.uid
 
         val jsonObjectRequest = JsonObjectRequest(
-            Request.Method.POST, url, null,
+            Request.Method.GET, url, null,
             { response ->
                 try {
                     if (response != null) {
@@ -151,7 +157,11 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
                         val success: String = jsonResponse.get("success").toString()
 
                         if (success == "1") {
-                            Toast.makeText(requireContext(), getString(R.string.delete), Toast.LENGTH_SHORT).show()
+                            // Goal inserted successfully, now get the last inserted ID
+                            val goalId: Int = jsonResponse.getInt("last_insert_id")
+                            // Use the goalId as needed
+                            updateGoalIdForIngredient(goalId)
+                            Toast.makeText(requireContext(), "Goal inserted with ID: $goalId", Toast.LENGTH_SHORT).show()
                         } else {
                             Toast.makeText(requireContext(), getString(R.string.recipeDetailsErrorOccurred), Toast.LENGTH_SHORT).show()
                         }
@@ -162,26 +172,28 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
                 }
             },
             { error ->
-
                 Log.d("Second", "Response : %s".format(error.message.toString()))
             }
         )
         jsonObjectRequest.retryPolicy = DefaultRetryPolicy(DefaultRetryPolicy.DEFAULT_TIMEOUT_MS, 0, 1f)
         WebDB.getInstance(requireContext()).addToRequestQueue(jsonObjectRequest)
 
-        getLatestGoalId(object : LatestGoalIdCallback {
-            override fun onLatestGoalIdReceived(goalId: Int) {
-                // Use the latestGoalId here
-                Log.d("LatestgoalIdddddd", goalId.toString())
-                testing(goalId)
-                updateGoalIdForIngredient(goalId)
-                // ... (other code)
 
-                // You can now perform the actions that need to be executed after getting the latestGoalId
-                findNavController().navigateUp()
-                findNavController().clearBackStack(R.id.goalFragment)
-            }
-        })
+
+
+//        getLatestGoalId(object : LatestGoalIdCallback {
+//            override fun onLatestGoalIdReceived(goalId: Int) {
+//                // Use the latestGoalId here
+//                Log.d("LatestgoalIdddddd", goalId.toString())
+//                testing(goalId)
+//                updateGoalIdForIngredient(goalId)
+//                // ... (other code)
+//
+//                // You can now perform the actions that need to be executed after getting the latestGoalId
+//                findNavController().navigateUp()
+//                findNavController().clearBackStack(R.id.goalFragment)
+//            }
+//        })
     }
 
     private fun updateManually(){
@@ -263,7 +275,7 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
     private fun getLatestGoalId(callback: LatestGoalIdCallback) {
         val url = getString(R.string.url_server) + getString(R.string.url_getLatestGoalId_goal)
         val jsonObjectRequest = JsonObjectRequest(
-            Request.Method.POST, url, null,
+            Request.Method.GET, url, null,
             { response ->
                 try {
                     if (response != null) {

@@ -3,6 +3,8 @@ package my.edu.tarc.zeroxpire.view.profile
 import android.app.Activity
 import android.app.AlertDialog
 import android.app.ProgressDialog
+import android.content.Context
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.util.Log
 import androidx.fragment.app.Fragment
@@ -36,17 +38,22 @@ import com.google.firebase.auth.GoogleAuthProvider
 import my.edu.tarc.zeroxpire.R
 import my.edu.tarc.zeroxpire.WebDB
 import my.edu.tarc.zeroxpire.databinding.FragmentLoginBinding
+import org.json.JSONArray
 import org.json.JSONObject
 import java.lang.Exception
+import java.net.UnknownHostException
 import java.util.*
 
 class LoginFragment : Fragment() {
+
+
     private lateinit var binding: FragmentLoginBinding
     private lateinit var auth: FirebaseAuth
     val Req_Code: Int = 123
     lateinit var googleSignInClient: GoogleSignInClient
     private lateinit var requestQueue: RequestQueue
 
+    private val sharedPrefFile = "sharedpreference"
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -73,6 +80,7 @@ class LoginFragment : Fragment() {
     }
 
     private fun loginWithGoogle() {
+
         googleSignInClient.signOut()
         val signInIntent = googleSignInClient.signInIntent
         launcher.launch(signInIntent)
@@ -81,6 +89,10 @@ class LoginFragment : Fragment() {
     private val launcher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
+                val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                handleResult(task)
+            }
+            else if(result.resultCode == Activity.RESULT_CANCELED){
                 val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
                 handleResult(task)
             }
@@ -109,10 +121,12 @@ class LoginFragment : Fragment() {
                 if (progressDialog.isShowing) {
                     progressDialog.dismiss()
                 }
-                findNavController().navigate(R.id.ingredientFragment)
+
                 toast(account.email.toString())
                 createUser(auth.currentUser)
                 setFragmentResult("requestEmail", bundleOf("email" to account.email))
+
+                findNavController().navigate(R.id.ingredientFragment)
                 findNavController().clearBackStack(R.id.ingredientFragment)
             } else {
                 if (progressDialog.isShowing) {
@@ -127,6 +141,17 @@ class LoginFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // Check if the user was previously logged in and chose to stay logged in
+        val sharedPreferences: SharedPreferences = requireActivity().getSharedPreferences(sharedPrefFile, Context.MODE_PRIVATE)
+        val isLoggedIn = sharedPreferences.getInt("stay_logged_in", 0) == 1
+
+        if (isLoggedIn) {
+            // Navigate to the appropriate screen (ingredientFragment in this case)
+            findNavController().navigate(R.id.ingredientFragment)
+            findNavController().clearBackStack(R.id.ingredientFragment)
+            enableBtmNav()
+        }
+
         binding.createAccBtn.setOnClickListener {
             findNavController().navigate(R.id.action_loginFragment_to_registerFragment)
         }
@@ -137,6 +162,9 @@ class LoginFragment : Fragment() {
 
         binding.loginBtn.setOnClickListener {
             normalLogin()
+            findNavController().navigate(R.id.ingredientFragment)
+            findNavController().clearBackStack(R.id.ingredientFragment)
+            enableBtmNav()
         }
 
         navigateBackListeners()
@@ -163,6 +191,13 @@ class LoginFragment : Fragment() {
     }
 
     private fun createUser(account: FirebaseUser?) {
+        val stayLoggedIn = if(binding.stayLoggedInCheckBox.isChecked){
+            1
+        }
+        else{
+            0
+        }
+
         val url = getString(R.string.url_server) + getString(R.string.url_create_user) +
                 "?userId=" + account?.uid +
                 "&userName=" + account?.displayName +
@@ -225,11 +260,20 @@ class LoginFragment : Fragment() {
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
                         if (progressDialog.isShowing) {
+                            val sharedPreferences: SharedPreferences = requireActivity().getSharedPreferences(sharedPrefFile,Context.MODE_PRIVATE)
+                            val editor: SharedPreferences.Editor = sharedPreferences.edit()
+                            if(binding.stayLoggedInCheckBox.isChecked){
+                                editor.putInt("stay_logged_in", 1)
+                            }
+                            else{
+                                editor.putInt("stay_logged_in", 0)
+                            }
+                            editor.apply()
                             progressDialog.dismiss()
+
+                            val isLoggedIn = sharedPreferences.getInt("stay_logged_in", 0)
+                            Log.d("SharedPref", "stay_logged_in: $isLoggedIn")
                         }
-                        findNavController().navigate(R.id.profileFragment)
-                        findNavController().clearBackStack(R.id.profileFragment)
-                        enableBtmNav()
                     } else {
                         if (progressDialog.isShowing) {
                             progressDialog.dismiss()

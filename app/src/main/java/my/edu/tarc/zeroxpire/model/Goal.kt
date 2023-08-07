@@ -13,5 +13,6 @@ data class Goal(
     val targetCompletionDate: Date,
     val dateCreated: Date,
     val completedDate: Date?,
-    val uncompletedDate: Date?
+    val uncompletedDate: Date?,
+    val userId: String
 )

@@ -39,6 +39,7 @@ import com.github.mikephil.charting.listener.OnChartValueSelectedListener
 import com.github.mikephil.charting.utils.MPPointF
 import com.google.android.material.bottomappbar.BottomAppBar
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.firebase.auth.FirebaseAuth
 import it.xabaras.android.recyclerview.swipedecorator.RecyclerViewSwipeDecorator
 import my.edu.tarc.zeroxpire.R
 import my.edu.tarc.zeroxpire.WebDB
@@ -60,6 +61,8 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
     private lateinit var requestQueue: RequestQueue
     private lateinit var pieChart: PieChart
 
+    private lateinit var auth: FirebaseAuth
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -73,6 +76,8 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        auth = FirebaseAuth.getInstance()
 
         pieChart = binding.pieChart
 
@@ -212,7 +217,7 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
                         progressDialog?.show()
                         val position = viewHolder.adapterPosition
                         val deletedGoal = adapter.getGoalAt(position)
-                        val url = getString(R.string.url_server) + getString(R.string.url_delete_goal) + "?goalId=" + deletedGoal.goalId
+                        val url = getString(R.string.url_server) + getString(R.string.url_delete_goal)
                         val jsonObjectRequest = JsonObjectRequest(Request.Method.POST, url, null,
                             { response ->
                                 // Handle successful deletion response, if required
@@ -281,7 +286,7 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
         progressDialog?.setMessage("Loading...")
         progressDialog?.setCancelable(false)
         progressDialog?.show()
-        val url: String = getString(R.string.url_server) + getString(R.string.url_read_goal)
+        val url: String = getString(R.string.url_server) + getString(R.string.url_read_goal) + "?userId=${auth.currentUser?.uid}"
         val jsonObjectRequest = JsonObjectRequest(
             Request.Method.GET, url, null,
             { response ->
@@ -325,13 +330,16 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
                                 }
                                 val uncompletedDateInMillis = uncompletedDate?.time ?: 0L
 
+                                val userId = jsonGoal.getString("userId")
+
                                 val goal = Goal(
                                     goalId,
                                     goalName,
                                     Date(targetCompletionDateInMillis),
                                     Date(dateCreatedInMillis),
                                     if (completedDate != null) Date(completedDateInMillis) else null,
-                                    if (uncompletedDate != null) Date(uncompletedDateInMillis) else null
+                                    if (uncompletedDate != null) Date(uncompletedDateInMillis) else null,
+                                    userId
                                 )
                                 Log.d("GoalObj", goal.toString())
                                 goalViewModel.addGoal(goal)

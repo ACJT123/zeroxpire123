@@ -163,5 +163,6 @@ Last updated: [Date]\n
     <string name="recipeCreateURL">/recipe/create.php</string>
     <string name="recipeGetRecommendURL">recipe/getRecommend.php</string>
     <string name="recipeGetRecipeByIDURL">/recipe/getRecipeByID.php</string>
+    <string name="url_read_username">user/getUsername.php</string>
 
 </resources>

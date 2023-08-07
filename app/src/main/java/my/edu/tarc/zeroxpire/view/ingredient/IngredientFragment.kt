@@ -1,11 +1,18 @@
 package my.edu.tarc.zeroxpire.view.ingredient
 
+import android.Manifest
 import android.app.AlertDialog
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.ProgressDialog
+import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.drawable.Drawable
 import android.icu.util.Calendar
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -14,11 +21,17 @@ import android.view.ViewGroup
 import android.widget.SearchView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.annotation.RequiresApi
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.ContextCompat.getSystemService
 import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.setFragmentResult
+import androidx.fragment.app.setFragmentResultListener
 import androidx.lifecycle.Observer
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -30,6 +43,8 @@ import com.android.volley.RequestQueue
 import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.Volley
 import com.bumptech.glide.Glide
+import com.bumptech.glide.request.target.CustomTarget
+import com.bumptech.glide.request.transition.Transition
 import com.google.android.material.bottomappbar.BottomAppBar
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.auth.FirebaseAuth
@@ -37,20 +52,21 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import it.xabaras.android.recyclerview.swipedecorator.RecyclerViewSwipeDecorator
 import my.edu.tarc.zeroxpire.R
+import my.edu.tarc.zeroxpire.WebDB
 import my.edu.tarc.zeroxpire.adapters.IngredientAdapter
 import my.edu.tarc.zeroxpire.databinding.FragmentIngredientBinding
 import my.edu.tarc.zeroxpire.ingredient.IngredientClickListener
+import my.edu.tarc.zeroxpire.model.Ingredient
+import my.edu.tarc.zeroxpire.viewmodel.GoalViewModel
+import my.edu.tarc.zeroxpire.viewmodel.IngredientViewModel
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.UnknownHostException
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 import java.util.*
-import android.util.Base64
-import my.edu.tarc.zeroxpire.WebDB
-import my.edu.tarc.zeroxpire.model.Ingredient
-import my.edu.tarc.zeroxpire.viewmodel.GoalViewModel
-import my.edu.tarc.zeroxpire.viewmodel.IngredientViewModel
-import java.io.ByteArrayOutputStream
 
 
 class IngredientFragment : Fragment(), IngredientClickListener {
@@ -66,48 +82,65 @@ class IngredientFragment : Fragment(), IngredientClickListener {
 
     private var progressDialog: ProgressDialog? = null
 
+    val CHANNEL_ID = "channelID"
+    val CHANNEL_NAME = "channelName"
+    val NOTIF_ID = 0
+
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View? {
         auth = FirebaseAuth.getInstance()
         binding = FragmentIngredientBinding.inflate(inflater, container, false)
 
-        if (auth.currentUser != null) {
-            val user = Firebase.auth.currentUser
-            val photoUrl = user?.photoUrl
+        requestQueue = Volley.newRequestQueue(requireContext())
+
+
+        return binding.root
+    }
+    @RequiresApi(Build.VERSION_CODES.O)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        binding.sortBtn.setBackgroundResource(R.drawable.baseline_sort_24)
+
+        val user = Firebase.auth.currentUser
+        if (user != null) {
+            val photoUrl = user.photoUrl
             val profilePictureUrl = photoUrl?.toString()
             if (profilePictureUrl != null) {
                 Glide.with(this)
                     .load(profilePictureUrl)
                     .into(binding.profilePicture)
             }
-            val userName = user?.displayName
-            binding.username.text = userName.toString()
+            else{
+                Glide.with(this)
+                    .load(R.drawable.messi)
+                    .into(binding.profilePicture)
+            }
+            if(user.displayName == ""){
+                getUsername()
+            } else {
+                getUsername()
+                binding.username.text = user.displayName
+            }
         } else {
             binding.username.text = "You are not signed in yet!"
             binding.profilePicture.elevation = 0F
         }
 
-        requestQueue = Volley.newRequestQueue(requireContext())
-
-
-        return binding.root
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-
-        binding.sortBtn.setBackgroundResource(R.drawable.baseline_sort_24)
-
         val adapter = IngredientAdapter(this, goalViewModel)
 
         loadIngredient(adapter)
+
+        createNotificationChannel()
 
         binding.recyclerview.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerview.adapter = adapter
 
         ingredientViewModel.ingredientList.observe(viewLifecycleOwner, Observer { ingredients ->
             adapter.setIngredient(ingredients)
+            reminder(ingredients)
         })
 
         sortIngredient(adapter)
@@ -117,6 +150,110 @@ class IngredientFragment : Fragment(), IngredientClickListener {
         navigateBack()
     }
 
+    private fun getUsername(){
+        val url: String = getString(R.string.url_server) + getString(R.string.url_read_username) + "?userId=${auth.currentUser?.uid}"
+        Log.d("uid", auth.currentUser?.uid.toString())
+        val jsonObjectRequest = JsonObjectRequest(
+            Request.Method.GET, url, null,
+            { response ->
+                try {
+                    if (response != null) {
+                        val strResponse = response.toString()
+                        val jsonResponse = JSONObject(strResponse)
+                        val jsonArray: JSONArray = jsonResponse.getJSONArray("records")
+                        val size: Int = jsonArray.length()
+
+
+                        if (size > 0) {
+                            for (i in 0 until size) {
+                                val jsonUser: JSONObject = jsonArray.getJSONObject(i)
+                                val getUserId = jsonUser.getString("userId")
+                                val getUserName = jsonUser.getString("userName")
+                                val stayLoggedIn = jsonUser.getInt("stayLoggedIn")
+                                Log.d("username", getUserName)
+                                binding.username.text = getUserName
+                            }
+                        }
+
+
+                    }
+                } catch (e: UnknownHostException) {
+                    Log.d("ContactRepository", "Unknown Host: ${e.message}")
+
+                } catch (e: java.lang.Exception) {
+                    Log.d("Cannot load", "Response: ${e.message}")
+
+                }
+            },
+            { error ->
+            }
+        )
+
+        jsonObjectRequest.retryPolicy = DefaultRetryPolicy(
+            DefaultRetryPolicy.DEFAULT_TIMEOUT_MS,
+            0,
+            1f
+        )
+
+        WebDB.getInstance(requireActivity()).addToRequestQueue(jsonObjectRequest)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun reminder(ingredients: List<Ingredient>) {
+        val notificationManager = NotificationManagerCompat.from(requireContext())
+
+        if (ingredients.isNotEmpty()) {
+            val channelId = CHANNEL_ID
+            val notificationId = NOTIF_ID
+
+            var absDaysLeft: Long? = null
+            var count: Int = 0
+
+            for (ingredient in ingredients){
+                val expiryDate: LocalDate? = ingredient.expiryDate.toInstant()?.atZone(ZoneId.systemDefault())?.toLocalDate()
+                val currentDate: LocalDate = LocalDate.now()
+                absDaysLeft = ChronoUnit.DAYS.between(currentDate, expiryDate)
+                count += 1
+            }
+
+
+
+
+            val expiryMessage = if(absDaysLeft == 0L){
+                "$count ingredient is expiring today."
+            }else{
+                return
+            }
+
+            val notificationBuilder = NotificationCompat.Builder(requireContext(), channelId)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle("Expiry Date Alert")
+                .setContentText(expiryMessage)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(true)
+
+            // Load the ingredientImage using Glide and convert it to a Bitmap
+            // For simplicity, you can omit the image in the summary notification
+
+            notificationManager.notify(notificationId, notificationBuilder.build())
+        }
+    }
+
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID, CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                lightColor = Color.GREEN
+                enableLights(true)
+
+            }
+            val manager = requireContext().getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(channel)
+        }
+    }
     private fun sortIngredient(adapter: IngredientAdapter) {
         binding.sortBtn.setOnClickListener {
             if (!isSort) {

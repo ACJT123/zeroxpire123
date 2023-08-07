@@ -2,56 +2,75 @@ package my.edu.tarc.zeroxpire
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
+import android.app.ProgressDialog
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.graphics.Color
-import android.media.MediaParser
-import android.media.MediaPlayer
+import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
 import android.util.Log
 import android.view.View
 import android.widget.Button
+import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.core.impl.Observable
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.app.TaskStackBuilder
 import androidx.core.content.ContextCompat
+import androidx.core.os.bundleOf
+import androidx.core.view.size
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.NavController
+import androidx.navigation.findNavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.ui.setupWithNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
+import com.bumptech.glide.request.target.CustomTarget
+import com.bumptech.glide.request.transition.Transition
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.card.MaterialCardView
 import com.google.firebase.auth.FirebaseAuth
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.Text
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.TextRecognizer
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import my.edu.tarc.zeroxpire.adapters.IngredientAdapter
+import my.edu.tarc.zeroxpire.adapters.RecognitionResultsAdapterDate
+import my.edu.tarc.zeroxpire.adapters.RecognitionResultsAdapterName
 import my.edu.tarc.zeroxpire.databinding.ActivityMainBinding
 import my.edu.tarc.zeroxpire.ingredient.IngredientClickListener
 import my.edu.tarc.zeroxpire.model.Ingredient
-import my.edu.tarc.zeroxpire.view.ingredient.ScannerFragment
 import my.edu.tarc.zeroxpire.viewmodel.GoalViewModel
 import my.edu.tarc.zeroxpire.viewmodel.IngredientViewModel
+import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
+import java.util.*
 
 class MainActivity : AppCompatActivity(), IngredientClickListener {
     private lateinit var binding: ActivityMainBinding
     private lateinit var navController: NavController
 
     private lateinit var auth: FirebaseAuth
-
-    private lateinit var networkConnection: NetworkConnection
-    private lateinit var networkConnectionObserver: Observable.Observer<Boolean>
 
     private lateinit var ingredientViewModel: IngredientViewModel
     private lateinit var goalViewModel: GoalViewModel
@@ -64,41 +83,68 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
 
     private val selectedIngredients: MutableList<Ingredient> = mutableListOf()
 
+    private val selectedRecognizedName: MutableList<String> = mutableListOf()
+
     val CHANNEL_ID = "channelID"
     val CHANNEL_NAME = "channelName"
     val NOTIF_ID = 0
 
 
+    //text recog
+    private var imageUri: Uri? = null
+    private var imageIngredientNameUri: Uri? = null
+    private lateinit var cameraPermissions: Array<String>
+    private lateinit var storagePermissions: Array<String>
+    private lateinit var progressDialog: ProgressDialog
+    private lateinit var textRecognizer: TextRecognizer
+
+    private var recognizedIngredientName: String? = null
+    private var recognizedExpiryDates: String? = null
+
+    private val cameraRequestCode = 1000
+    private val notificationRequestCode = 1000
+
+    private var hasGetName = false;
+    private var hasGetDate = false;
+
+    private var isManualOptionChosen = false
+
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        if (ContextCompat.checkSelfPermission(
+                applicationContext,
+                android.Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_DENIED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.CAMERA),
+                cameraRequestCode
+            )
+        }
+        if (ContextCompat.checkSelfPermission(
+                applicationContext,
+                android.Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_DENIED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                notificationRequestCode
+            )
+        }
 
         createNotifChannel()
 
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Testing")
-            .setContentText("Just a testing")
-            .setSmallIcon(R.drawable.logo2)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .build()
-
-        val notificationManager = NotificationManagerCompat.from(this)
-
-
-        // Internet connection
-        //TODO: cannot be done currently due to the lead of navigation state lost
-
+        ingredientViewModel = ViewModelProvider(this)[IngredientViewModel::class.java]
 
         // Initialize Firebase Auth
         auth = FirebaseAuth.getInstance()
-
-        if(auth.currentUser?.uid != null){
-            notificationManager.notify(NOTIF_ID, notification)
-        }
-
 
         //initialize ViewModel
         ingredientViewModel = ViewModelProvider(this).get(IngredientViewModel::class.java)
@@ -121,16 +167,50 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
 
         disableBtmNav()
 
+        if (auth.currentUser != null) {
+            navController.navigate(R.id.ingredientFragment)
+            navController.clearBackStack(R.id.ingredientFragment)
+            enableBtmNav()
+        }
+
         navController.addOnDestinationChangedListener { _, destination, _ ->
             when (destination.id) {
                 R.id.ingredientFragment -> {
                     enableBtmNav()
                     binding.fab.setImageResource(R.drawable.barcode_scan_icon_137911)
                     binding.fab.setOnClickListener {
-                        navController.clearBackStack(R.id.ingredientFragment)
-                        navController.navigate(R.id.action_ingredientFragment_to_scannerFragment)
-                        disableBtmNav()
-                        requestCameraAndStartScanner()
+                        bottomSheetDialog = BottomSheetDialog(this)
+                        bottomSheetView = layoutInflater.inflate(
+                            R.layout.bottom_sheet_add_ingredient_option,
+                            null
+                        )
+                        bottomSheetDialog.setContentView(bottomSheetView)
+                        bottomSheetDialog.show()
+                        val scanner = bottomSheetView.findViewById<MaterialCardView>(R.id.scannerOption)
+                        val manual = bottomSheetView.findViewById<MaterialCardView>(R.id.manualOption)
+
+                        scanner.setOnClickListener {
+                            byRecognition()
+                            bottomSheetDialog.dismiss()
+                            disableBtmNav()
+                        }
+
+                        manual.setOnClickListener {
+                            bottomSheetDialog.dismiss()
+                            disableBtmNav() // Disable the bottom navigation view when manual option is chosen
+                            isManualOptionChosen = true // Set the flag to true when manual option is chosen
+                            navController.navigate(R.id.action_ingredientFragment_to_addIngredientFragment)
+                        }
+
+
+
+
+                        bottomSheetDialog.setOnDismissListener {
+                            if (!isManualOptionChosen) {
+                                enableBtmNav() // Re-enable the bottom navigation view when the bottom sheet is dismissed
+                            }
+                        }
+
                     }
                 }
                 R.id.goalFragment -> {
@@ -151,196 +231,410 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
                     }
                 }
                 R.id.profileFragment -> {
-//                    else{
-//                        navController.navigate(R.id.)
-//                        Toast.makeText(this, "User", Toast.LENGTH_SHORT).show()
-//                    }
-//                    disableBtmNav()
-//                    binding.bottomAppBar.visibility = View.VISIBLE
-//                    binding.bottomAppBar.fabCradleMargin = -50f
                 }
+            }
+        }
+    }
+
+    override fun onBackPressed() {
+        // Check if the camera option was chosen
+        if (isManualOptionChosen) {
+            enableBtmNav() // Re-enable the bottom navigation view
+            isManualOptionChosen = false // Reset the flag
+        }
+
+        super.onBackPressed()
+    }
+
+    private fun byRecognition() {
+        //text recog permissions
+        cameraPermissions =
+            arrayOf(Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        storagePermissions = arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+
+        progressDialog = ProgressDialog(this)
+        progressDialog.setTitle("Please wait")
+        progressDialog.setCanceledOnTouchOutside(false)
+
+        textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+
+        val values = ContentValues()
+        values.put(MediaStore.Images.Media.TITLE, "Sample title")
+        values.put(MediaStore.Images.Media.DESCRIPTION, "Sample Description")
+
+        imageUri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+
+        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri)
+
+        cameraActivityResultLauncher.launch(intent)
+    }
+
+    private fun byRecognitionDate() {
+        imageUri = null
+        //text recog permissions
+        cameraPermissions =
+            arrayOf(Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        storagePermissions = arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+
+        progressDialog = ProgressDialog(this)
+        progressDialog.setTitle("Please wait")
+        progressDialog.setCanceledOnTouchOutside(false)
+
+        textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+
+        val values = ContentValues()
+        values.put(MediaStore.Images.Media.TITLE, "Sample title")
+        values.put(MediaStore.Images.Media.DESCRIPTION, "Sample Description")
+
+        imageUri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+
+        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri)
+
+        cameraActivityResultLauncherDate.launch(intent)
+    }
+
+
+    private val cameraActivityResultLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                startRecognizeName()
+            }
+        }
+
+    private val cameraActivityResultLauncherDate =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                startRecognizeDate()
             }
         }
 
 
+    private fun startRecognizeName() {
+        progressDialog.setMessage("Processing image")
+        progressDialog.show()
+        try {
+            val inputImage = InputImage.fromFilePath(this, imageUri!!)
+            progressDialog.setMessage("Recognizing text")
+
+            val textTaskResult = textRecognizer.process(inputImage)
+                .addOnSuccessListener { text ->
+                    progressDialog.dismiss()
+
+                    // Split the recognized text into separate lines or words
+                    val lines = text.text.split("\n")
+                    Log.d("line", lines.toString())
+
+                    // Display the recognized lines/words to the user for selection
+                    displayRecognitionResultsName(lines)
+
+                }
+        } catch (e: Exception) {
+            progressDialog.dismiss()
+            // Handle the exception
+        }
     }
 
+
+
+    private fun displayRecognitionResultsName(results: List<String>) {
+        val dialog = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_recognition_results, null)
+        dialog.setContentView(view)
+        dialog.show()
+        dialog.setCancelable(false)
+
+        val recyclerView = view.findViewById<RecyclerView>(R.id.recyclerViewRecognitionResults)
+        val layoutManager = LinearLayoutManager(this)
+        recyclerView.layoutManager = layoutManager
+
+        val mergeTextField = view.findViewById<TextView>(R.id.mergedTextView)
+
+        val adapter = RecognitionResultsAdapterName(this, results) { selectedResult ->
+            if (selectedRecognizedName.contains(selectedResult)) {
+                selectedRecognizedName.remove(selectedResult)
+            } else {
+                selectedRecognizedName.add(selectedResult)
+            }
+
+            recognizedIngredientName = selectedRecognizedName.joinToString(separator = " ")
+            mergeTextField.text = recognizedIngredientName.toString()
+        }
+
+        val rescanBtn = view.findViewById<Button>(R.id.rescanBtn)
+        rescanBtn.setOnClickListener {
+            dialog.dismiss()
+            adapter.selectedItems.clear()
+            byRecognition()
+        }
+
+
+
+
+
+        view.findViewById<TextView>(R.id.textView).text = "${adapter.itemCount} possible names found:"
+        recyclerView.adapter = adapter
+
+        val cancelBtn = view.findViewById<ImageView>(R.id.cancelBtn)
+        cancelBtn.setOnClickListener {
+            dialog.dismiss()
+        }
+
+
+        val continueBtn = view.findViewById<Button>(R.id.continueBtn)
+        continueBtn.setOnClickListener {
+            imageIngredientNameUri = imageUri
+//            val combinedRecognizedNames = selectedRecognizedName.joinToString(separator = " ")
+//            recognizedIngredientName = combinedRecognizedName
+            Log.d("recooogName", recognizedIngredientName.toString())
+            dialog.dismiss()
+
+            // Now, initiate the date recognition process
+            byRecognitionDate()
+        }
+    }
+
+
+//    private fun startCameraForDateRecognition() {
+//        // Rest of your camera code for date recognition goes here
+//        progressDialog.setMessage("Processing image")
+//        progressDialog.show()
+//        progressDialog.setCancelable(false)
+//        try {
+//            val inputImage = InputImage.fromFilePath(this, imageUri!!)
+//            progressDialog.setMessage("Recognizing text")
+//
+//            val textTaskResult = textRecognizer.process(inputImage)
+//                .addOnSuccessListener { text ->
+//                    progressDialog.dismiss()
+//
+//                    // Split the recognized text into separate lines or words
+//                    val dates = findAllDatesInText(text.toString())
+//                    val lines = dates.toString().split("\n")
+//                    Log.d("line", lines.toString())
+//
+//                    // Display the recognized lines/words to the user for selection
+//                    displayRecognitionResultsDate(lines)
+//                }
+//        } catch (e: Exception) {
+//            progressDialog.dismiss()
+//            // Handle the exception
+//        }
+//    }
+
+    private fun startRecognizeDate() {
+        progressDialog.setMessage("Processing image")
+        progressDialog.show()
+
+        try {
+            val inputImage = InputImage.fromFilePath(this, imageUri!!)
+            progressDialog.setMessage("Recognizing text")
+
+            val textTaskResult = textRecognizer.process(inputImage)
+                .addOnSuccessListener { text ->
+                    progressDialog.dismiss()
+
+                    val dates = findAllDatesInText(text.text)
+                    Log.d("dates", dates.toString())
+
+                    if (dates.isNotEmpty()) {
+                        recognizedExpiryDates = dates.joinToString(separator = "\n")
+                        Log.d("recooogDate", recognizedExpiryDates.toString())
+
+                        // Display the bottom sheet for date selection
+                        displayRecognitionResultsDate(recognizedExpiryDates!!)
+                    } else {
+                        // Handle the case when no dates are found
+                        // You might want to show an error message or provide feedback to the user
+                    }
+                }
+                .addOnFailureListener { e ->
+                    progressDialog.dismiss()
+                    byRecognitionDate()
+                    // Handle failure
+                }
+        } catch (e: Exception) {
+            progressDialog.dismiss()
+            byRecognitionDate()
+            // Handle the exception
+        }
+    }
+
+
+    private fun displayRecognitionResultsDate(results: String) {
+        val dialog = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_recognition_results, null)
+        dialog.setContentView(view)
+        dialog.show()
+        dialog.setCancelable(false)
+
+        val recyclerView = view.findViewById<RecyclerView>(R.id.recyclerViewRecognitionResults)
+        val layoutManager = LinearLayoutManager(this)
+        recyclerView.layoutManager = layoutManager
+
+        val adapter = RecognitionResultsAdapterDate(this,results.split("\n")) { selectedResult ->
+            // Handle the selected date here
+            // For example, you can assign the selectedResult to recognizedExpiryDates
+            recognizedExpiryDates = selectedResult
+            Log.d("recoggDateResult", recognizedExpiryDates.toString())
+        }
+
+        view.findViewById<TextView>(R.id.textView).text = "${adapter.itemCount} possible dates found:"
+        recyclerView.adapter = adapter
+
+        val cancelBtn = view.findViewById<ImageView>(R.id.cancelBtn)
+        cancelBtn.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        val mergedTextView = view.findViewById<TextView>(R.id.mergedTextView)
+        mergedTextView.visibility = View.GONE
+
+        val mergedTextViewLabel = view.findViewById<TextView>(R.id.mergedTextViewLabel)
+        mergedTextViewLabel.visibility = View.GONE
+
+        val continueBtn = view.findViewById<Button>(R.id.continueBtn)
+        continueBtn.text = "complete"
+        continueBtn.setOnClickListener {
+            if (recognizedExpiryDates != null) {
+                hasGetDate = true
+                navigateToNextFragment() // Call this function to proceed after date recognition
+                dialog.dismiss()
+            } else {
+                // Inform the user to select a date before continuing
+                // You can show a Toast or set an error message
+            }
+        }
+    }
+
+    private fun navigateToNextFragment() {
+        if (recognizedIngredientName != null) {
+//            myFragment.arguments = bundle
+//            fragmentTransaction.add(R.id.nav_host_fragment,myFragment).commit()
+            val bundle = bundleOf(
+                "recognizedIngredientName" to recognizedIngredientName,
+                "recognizedExpiryDate" to recognizedExpiryDates,
+                "ingredientImage" to imageIngredientNameUri
+            )
+            Log.d("bundle", bundle.toString())
+            navController.navigate(R.id.action_ingredientFragment_to_addIngredientFragment, bundle)
+            disableBtmNav()
+        } else {
+            // Handle the case when either the name or the date is not recognized
+            // For example, show an error message or provide feedback to the user
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+        // Release the text recognition resources
+        textRecognizer.close()
+
+        // Any other cleanup related to camera or resources
+    }
+
+    private fun findAllDatesInText(text: String): List<String> {
+        Log.d("scannedDate", text)
+        val dateFormatInput = SimpleDateFormat("dd.MM.yyyy", Locale.US)
+        val dateFormatOutput = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        val formattedDates = mutableListOf<String>()
+
+        val regex = "\\b\\d{2}\\.\\d{2}\\.\\d{4}\\b".toRegex()
+        val matchResults = regex.findAll(text)
+
+        matchResults.forEach { matchResult ->
+            try {
+                val date = dateFormatInput.parse(matchResult.value)
+                date?.let { formattedDates.add(dateFormatOutput.format(it)) }
+            } catch (e: Exception) {
+                // Invalid date format, ignore and continue searching
+            }
+        }
+
+        return formattedDates
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun reminder(ingredient: Ingredient) {
+        val notificationManager = NotificationManagerCompat.from(this)
+        val expiryDate: LocalDate? =
+            ingredient.expiryDate.toInstant()?.atZone(ZoneId.systemDefault())?.toLocalDate()
+
+        if (expiryDate != null) {
+            val currentDate: LocalDate = LocalDate.now()
+            val absoluteDaysLeft: Long = ChronoUnit.DAYS.between(currentDate, expiryDate)
+
+            val expiryMessage = when {
+                absoluteDaysLeft == 0L -> "today"
+                absoluteDaysLeft > 1L -> "in $absoluteDaysLeft days"
+                else -> "in $absoluteDaysLeft day"
+            }
+
+            if (absoluteDaysLeft <= 5) {
+                val channelId = CHANNEL_ID // Use the same channel ID created earlier
+                val notificationId =
+                    ingredient.ingredientId // You can use a unique ID for each notification
+
+                val notificationBuilder = NotificationCompat.Builder(this, channelId)
+                    .setSmallIcon(R.mipmap.ic_launcher)
+                    .setContentTitle("Expiry Date Alert")
+                    .setContentText("${ingredient.ingredientName} expires $expiryMessage")
+                    .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                    .setAutoCancel(true)
+
+                // Load the ingredientImage using Glide and convert it to a Bitmap
+                Glide.with(this)
+                    .asBitmap()
+                    .load(ingredient.ingredientImage) // Replace 'ingredientImage' with the actual URL
+                    .into(object : CustomTarget<Bitmap>() {
+                        override fun onResourceReady(
+                            resource: Bitmap,
+                            transition: Transition<in Bitmap>?
+                        ) {
+                            // Set the Bitmap as the large icon for the notification
+                            notificationBuilder.setLargeIcon(resource)
+                            notificationManager.notify(notificationId, notificationBuilder.build())
+                        }
+
+                        override fun onLoadCleared(placeholder: Drawable?) {
+                            // Do nothing
+                        }
+                    })
+
+                if (ActivityCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    // TODO: Consider calling
+                    //    ActivityCompat#requestPermissions
+                    // here to request the missing permissions, and then overriding
+                    //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                    //                                          int[] grantResults)
+                    // to handle the case where the user grants the permission. See the documentation
+                    // for ActivityCompat#requestPermissions for more details.
+                    return
+                }
+                notificationManager.notify(notificationId, notificationBuilder.build())
+            }
+        }
+    }
+
+
     private fun createNotifChannel() {
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
-            val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_DEFAULT).apply {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID, CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
                 lightColor = Color.GREEN
                 enableLights(true)
 
             }
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
-        }
-
-        var notificationSound = MediaPlayer.create(this, R.raw.notification)
-        notificationSound.start()
-
-        notificationSound.setOnCompletionListener {
-            notificationSound.release()
-            notificationSound = null
-        }
-
-
-    }
-
-//    fun showBottomSheetDialog(ingredientAdapter: IngredientAdapter) {
-//        bottomSheetView = layoutInflater.inflate(R.layout.bottom_sheet_dialog, null)
-//        val size = ingredientViewModel.ingredientList.value?.size
-//        val noRecordedTextView = bottomSheetView.findViewById<ConstraintLayout>(R.id.noIngredientHasRecordedDialog)
-//        val searchView = bottomSheetView.findViewById<SearchView>(R.id.ingredientSearchViewForGoal)
-//        val selectTextView = bottomSheetView.findViewById<TextView>(R.id.selectTV)
-//        Log.d("Size: ", size.toString())
-//
-//        if (size != null) {
-//            if (size == 0) {
-//                searchView.visibility = View.GONE
-//                noRecordedTextView.visibility = View.VISIBLE
-//                selectTextView.visibility = View.INVISIBLE
-//            } else {
-//                searchView.visibility = View.VISIBLE
-//                noRecordedTextView.visibility = View.INVISIBLE
-//                selectTextView.visibility = View.VISIBLE
-//            }
-//        }
-//
-//        bottomSheetDialog = BottomSheetDialog(this)
-//        bottomSheetDialog.setContentView(bottomSheetView)
-//        bottomSheetDialog.show()
-//
-//        recyclerView = bottomSheetView.findViewById<RecyclerView>(R.id.recyclerviewNumIngredientChoosed)
-//        recyclerView.layoutManager = LinearLayoutManager(this)
-//        recyclerView.adapter = this.ingredientAdapter
-//
-//        this.ingredientAdapter.setIngredient(ingredientViewModel.ingredientList.value ?: emptyList())
-//
-//        val nextBtn = bottomSheetView.findViewById<Button>(R.id.nextBtn)
-//
-//        nextBtn.isEnabled = false
-//
-//        nextBtn.setOnClickListener {
-//            // Create a new Bundle to pass data to the next fragment
-//            val bundle = Bundle()
-//
-//            // Create an ArrayList to store the ingredient IDs
-//            val ingredientIds = ArrayList<String>()
-//
-//            for (i in 0 until selectedIngredients.size) {
-//                // Add each ingredient ID to the ArrayList
-//                ingredientIds.add(selectedIngredients[i].ingredientId.toString())
-//            }
-//
-//            // Put the ArrayList of ingredient IDs into the Bundle
-//            bundle.putStringArrayList("ingredientIds", ingredientIds)
-//
-//            navController.navigate(R.id.action_goalFragment_to_createGoalFragment, bundle)
-//
-//            // Clear the selectedIngredients list after navigation
-//            selectedIngredients.clear()
-//
-//            bottomSheetDialog.dismiss()
-//            disableBtmNav()
-//
-//        }
-////
-////        if(selectedIngredients.isEmpty()){
-////            nextBtn.isEnabled = false
-////        }
-////        if(selectedIngredients.isNotEmpty()){
-////            nextBtn.isEnabled = true
-////        }
-//
-//
-//        searchIngredient(ingredientAdapter)
-//
-//    }
-//
-//    private fun searchIngredient(adapter: IngredientAdapter) {
-//        val searchView = bottomSheetView.findViewById<SearchView>(R.id.ingredientSearchViewForGoal)
-//        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-//            override fun onQueryTextSubmit(query: String): Boolean {
-//                return false
-//            }
-//
-//            override fun onQueryTextChange(newText: String): Boolean {
-//                val filteredIngredients = ingredientViewModel.ingredientList.value?.filter { ingredient ->
-//                    ingredient.ingredientName.contains(newText, ignoreCase = true)
-//                }
-//
-//                adapter.setIngredient(filteredIngredients ?: emptyList())
-//
-//                return true
-//            }
-//        })
-//    }
-
-
-//    override fun onResume() {
-//        super.onResume()
-//        Toast.makeText(this, "On resuming", Toast.LENGTH_SHORT).show()
-//    }
-//
-//    override fun onRestart() {
-//        super.onRestart()
-//        Toast.makeText(this, "On restarting", Toast.LENGTH_SHORT).show()
-//    }
-//
-//    override fun onStart() {
-//        super.onStart()
-//        Toast.makeText(this, "On starting", Toast.LENGTH_SHORT).show()
-////        // Check if user is signed in (non-null) and update UI accordingly.
-////        val currentUser = auth.currentUser
-////        if (currentUser != null) {
-////            Toast.makeText(this, "Already Signed In", Toast.LENGTH_SHORT).show()
-////        }
-//    }
-//
-//    override fun onPause() {
-//        super.onPause()
-//        Toast.makeText(this, "On pausing", Toast.LENGTH_SHORT).show()
-//    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        Toast.makeText(this, "On destroying", Toast.LENGTH_SHORT).show()
-    }
-
-    private val cameraPermission = android.Manifest.permission.CAMERA
-    private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            startScanner()
-        }
-    }
-
-    private fun requestCameraAndStartScanner() {
-        if (isPermissionGranted(cameraPermission)) {
-            startScanner()
-        } else {
-            requestCameraPermission()
-        }
-    }
-
-    private fun requestCameraPermission() {
-        when {
-            shouldShowRequestPermissionRationale(cameraPermission) -> {
-                cameraPermissionRequest {
-                    openPermissionSetting()
-                }
-            }
-            else -> {
-                requestPermissionLauncher.launch(cameraPermission)
-            }
-        }
-    }
-
-    private fun startScanner() {
-        ScannerFragment.startScanner(this) {
         }
     }
 
@@ -381,7 +675,12 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
                 selectedIngredients.remove(ingredient)
             } else {
                 // Change the background color of the clicked item to the selected color
-                clickedItemView?.setBackgroundColor(ContextCompat.getColor(this, R.color.btnColor))
+                clickedItemView?.setBackgroundColor(
+                    ContextCompat.getColor(
+                        this,
+                        R.color.btnColor
+                    )
+                )
                 clickedItemView?.tag = true
 
                 // Select the ingredient if it was deselected
