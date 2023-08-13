@@ -13,6 +13,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -85,6 +86,8 @@ class IngredientDetailFragment : Fragment() {
             binding.enterIngredientName.setText(originalName)
         }
 
+        binding.ingredientImage.setPadding(0, 0, 0, 0)
+        binding.ingredientImage.scaleType = ImageView.ScaleType.CENTER_CROP
         setFragmentResultListener("requestImage") { _, bundle ->
             val imageUri = bundle.getString("image")
             Glide.with(requireContext())

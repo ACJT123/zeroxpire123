@@ -43,6 +43,7 @@ import java.io.ByteArrayOutputStream
 import java.lang.Exception
 import java.net.URLEncoder
 import java.net.UnknownHostException
+import java.text.ParseException
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
@@ -88,20 +89,39 @@ class AddIngredientFragment : Fragment() {
             val recognizedName = arguments?.getString("recognizedIngredientName").toString()
             binding.enterIngredientName.setText(recognizedName)
 
+
             val recognizedDate = arguments?.getString("recognizedExpiryDate").toString()
-            val dateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            val parsedDate = dateFormatter.parse(recognizedDate)
+            val possibleDateFormats = listOf(
+                SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()),
+                SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()),
+                SimpleDateFormat("MM/dd/yyyy", Locale.getDefault())
+                // Add more date formats as needed
+            )
 
-            val outputDateFormat = SimpleDateFormat("d/M/yyyy", Locale.getDefault())
-            val formattedDate = parsedDate?.let { outputDateFormat.format(it) }
-            selectedDate = formattedDate?.let { outputDateFormat.parse(it) }
-            binding.chooseExpiryDate.setText(formattedDate)
+            var parsedDate: Date? = null
+
+            for (dateFormat in possibleDateFormats) {
+                try {
+                    parsedDate = dateFormat.parse(recognizedDate)
+                    if (parsedDate != null) {
+                        break // Successfully parsed, no need to continue
+                    }
+                } catch (e: ParseException) {
+                    // Parsing failed with this format, continue with the next one
+                }
+            }
+
+            if (parsedDate != null) {
+                val outputDateFormat = SimpleDateFormat("d/M/yyyy", Locale.getDefault())
+                val formattedDate = outputDateFormat.format(parsedDate)
+                selectedDate = outputDateFormat.parse(formattedDate)
+                binding.chooseExpiryDate.setText(formattedDate)
+            } else {
+                // Handle the case when none of the formats match
+                // Display an error message or provide feedback to the user
+            }
+
         }
-
-
-
-
-
 
 
         //image
@@ -222,7 +242,7 @@ class AddIngredientFragment : Fragment() {
     private fun storeIngredient() {
         progressDialog = ProgressDialog(requireContext())
         progressDialog?.setMessage("Adding...")
-//        progressDialog?.setCancelable(false)
+        progressDialog?.setCancelable(false)
         progressDialog?.show()
         val ingredientName = binding.enterIngredientName.text.toString()
         val ingredientCategory = binding.chooseCategory.text.toString()

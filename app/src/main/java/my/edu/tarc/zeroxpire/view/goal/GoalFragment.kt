@@ -217,7 +217,7 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
                         progressDialog?.show()
                         val position = viewHolder.adapterPosition
                         val deletedGoal = adapter.getGoalAt(position)
-                        val url = getString(R.string.url_server) + getString(R.string.url_delete_goal)
+                        val url = getString(R.string.url_server) + getString(R.string.url_delete_goal) + "?goalId=" + deletedGoal.goalId
                         val jsonObjectRequest = JsonObjectRequest(Request.Method.POST, url, null,
                             { response ->
                                 // Handle successful deletion response, if required
@@ -467,6 +467,7 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
             )
         )
         setFragmentResult("requestId", bundleOf("id" to goal.goalId))
+        Log.d("goalIdFragmentResult", goal.goalId.toString())
         //Log.d("imageIngredient", ingredient.ingredientImage.toString())
         //setFragmentResult("requestImage", bundleOf("image" to ingredient.ingredientImage))
         disableBtmNav()

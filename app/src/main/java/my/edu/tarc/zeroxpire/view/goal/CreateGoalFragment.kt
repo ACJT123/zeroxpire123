@@ -2,6 +2,7 @@ package my.edu.tarc.zeroxpire.view.goal
 
 import android.app.AlertDialog
 import android.app.DatePickerDialog
+import android.app.ProgressDialog
 import android.graphics.Canvas
 import android.graphics.Color
 import android.os.Bundle
@@ -40,6 +41,7 @@ import java.lang.Exception
 import java.net.UnknownHostException
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.lifecycle.Observer
 
 
 class CreateGoalFragment : Fragment(), IngredientClickListener{
@@ -72,6 +74,8 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
     private var selectedDate: Date? = null // Variable to store the selected date
 
     private lateinit var auth: FirebaseAuth
+
+    private var progressDialog: ProgressDialog? = null
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -101,14 +105,10 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
         selectedIngredientsTemporary.clear()
         getFromStoredIngredients.clear()
 
-        ingredientViewModel.ingredientList.observe(viewLifecycleOwner){ingredients->
-            storedIngredients = ingredients as MutableList<Ingredient>
-            getFromStoredIngredients = storedIngredients
-            Log.d("Stored ingredients", getFromStoredIngredients.toString())
-        }
+        ingredientViewModel.getAllIngredientsWithoutGoalId().observe(viewLifecycleOwner, Observer {ingredients->
+            getFromStoredIngredients = ingredients as MutableList<Ingredient>
 
-
-
+        })
 
         addIngredientDialogBtn.setOnClickListener {
             showBottomSheetDialog(bottomSheetIngredientAdapter)
@@ -140,12 +140,19 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
             return
         }
 
+        progressDialog = ProgressDialog(requireContext())
+        progressDialog?.setMessage("Adding...")
+        progressDialog?.setCancelable(false)
+        progressDialog?.show()
+
         val targetCompletionDateConverted = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
             .format(targetCompletionDate)
         val url = getString(R.string.url_server) + getString(R.string.url_create_goal) +
                 "?goalName=" + goalName +
                 "&targetCompletionDate=" + targetCompletionDateConverted +
                 "&userId=" + auth.currentUser?.uid
+
+        Log.d("urllllllllllll", url)
 
         val jsonObjectRequest = JsonObjectRequest(
             Request.Method.GET, url, null,
@@ -158,7 +165,8 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
 
                         if (success == "1") {
                             // Goal inserted successfully, now get the last inserted ID
-                            val goalId: Int = jsonResponse.getInt("last_insert_id")
+                            val goalId: Int = jsonResponse.getInt("lastInsertedId")
+                            Log.d("goalId", goalId.toString())
                             // Use the goalId as needed
                             updateGoalIdForIngredient(goalId)
                             Toast.makeText(requireContext(), "Goal inserted with ID: $goalId", Toast.LENGTH_SHORT).show()
@@ -167,7 +175,7 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
                         }
                     }
                 } catch (e: Exception) {
-                    updateManually()
+//                    updateManually()
                     Log.d("Fragment", "Response: %s".format(e.message.toString()))
                 }
             },
@@ -178,56 +186,6 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
         jsonObjectRequest.retryPolicy = DefaultRetryPolicy(DefaultRetryPolicy.DEFAULT_TIMEOUT_MS, 0, 1f)
         WebDB.getInstance(requireContext()).addToRequestQueue(jsonObjectRequest)
 
-
-
-
-//        getLatestGoalId(object : LatestGoalIdCallback {
-//            override fun onLatestGoalIdReceived(goalId: Int) {
-//                // Use the latestGoalId here
-//                Log.d("LatestgoalIdddddd", goalId.toString())
-//                testing(goalId)
-//                updateGoalIdForIngredient(goalId)
-//                // ... (other code)
-//
-//                // You can now perform the actions that need to be executed after getting the latestGoalId
-//                findNavController().navigateUp()
-//                findNavController().clearBackStack(R.id.goalFragment)
-//            }
-//        })
-    }
-
-    private fun updateManually(){
-        for(ingredient in selectedIngredients){
-            val url = getString(R.string.url_server) + getString(R.string.url_getLatestGoalId_goal) +
-                    "?ingredientId=" + ingredient.ingredientId
-            val jsonObjectRequest = JsonObjectRequest(
-                Request.Method.POST, url, null,
-                { response ->
-                    try {
-                        if(response!=null){
-                            val strResponse = response.toString()
-                            val jsonResponse = JSONObject(strResponse)
-                            val success: String = jsonResponse.get("success").toString()
-
-                            if (success == "1") {
-                                Toast.makeText(requireContext(), "GoalID is updated successfully.", Toast.LENGTH_SHORT).show()
-                            } else {
-                                //toast(requireContext(), "Failed to update.")
-                            }
-                        }
-                    }
-                    catch (e: java.lang.Exception) {
-                        Log.d("Update", "Response: %s".format(e.message.toString()))
-                    }
-                },
-                { error ->
-                    // Handle error response, if required
-                    Log.d("Update", "Error Response: ${error.message}")
-                }
-            )
-            jsonObjectRequest.retryPolicy = DefaultRetryPolicy(DefaultRetryPolicy.DEFAULT_TIMEOUT_MS, 0, 1f)
-            WebDB.getInstance(requireContext()).addToRequestQueue(jsonObjectRequest)
-        }
     }
 
     private fun updateGoalIdForIngredient(goalId: Int){
@@ -247,7 +205,7 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
                             val success: String = jsonResponse.get("success").toString()
 
                             if (success == "1") {
-                                Toast.makeText(requireContext(), "GoalID is updated successfully.", Toast.LENGTH_SHORT).show()
+
                             } else {
                                 //toast(requireContext(), "Failed to update.")
                             }
@@ -266,58 +224,12 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
             WebDB.getInstance(requireContext()).addToRequestQueue(jsonObjectRequest)
         }
 
+        progressDialog?.dismiss()
+        Toast.makeText(requireContext(), "GoalID is updated successfully.", Toast.LENGTH_SHORT).show()
+        findNavController().navigateUp()
+        findNavController().clearBackStack(R.id.goalFragment)
+
     }
-
-    private fun testing(goalId: Int) {
-        Toast.makeText(requireContext(), goalId.toString(), Toast.LENGTH_SHORT).show()
-    }
-
-    private fun getLatestGoalId(callback: LatestGoalIdCallback) {
-        val url = getString(R.string.url_server) + getString(R.string.url_getLatestGoalId_goal)
-        val jsonObjectRequest = JsonObjectRequest(
-            Request.Method.GET, url, null,
-            { response ->
-                try {
-                    if (response != null) {
-                        val strResponse = response.toString()
-                        val jsonResponse = JSONObject(strResponse)
-                        val jsonArray: JSONArray = jsonResponse.getJSONArray("records")
-                        val size: Int = jsonArray.length()
-
-                        var latestGoalId = 0
-
-                        if (size > 0) {
-                            for (i in 0 until size) {
-                                val jsonGoal: JSONObject = jsonArray.getJSONObject(i)
-                                val goalId = jsonGoal.getInt("goalId")
-                                latestGoalId = goalId
-                            }
-                        }
-
-                        // Invoke the callback with the latestGoalId
-                        callback.onLatestGoalIdReceived(latestGoalId)
-                    }
-                } catch (e: UnknownHostException) {
-                    Log.d("ContactRepository", "Unknown Host: ${e.message}")
-                } catch (e: Exception) {
-                    Log.d("ContactRepository", "Response: ${e.message}")
-                }
-            },
-            { error ->
-                Log.d("FuuuuuuuuuuuuuuuuccccccK", "Error Response: ${error.message}")
-            }
-        )
-
-        jsonObjectRequest.retryPolicy = DefaultRetryPolicy(
-            DefaultRetryPolicy.DEFAULT_TIMEOUT_MS,
-            0,
-            1f
-        )
-
-        WebDB.getInstance(requireActivity()).addToRequestQueue(jsonObjectRequest)
-    }
-
-
 
     private fun selectedIngredientRecyclerReview(adapter: IngredientAdapter){
         recyclerView = binding.selectedIngredientRecyclerViewGoal
@@ -477,15 +389,15 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
             val clickedItemView = layoutManager.findViewByPosition(clickedItemPosition)
 
             val isItemSelected = clickedItemView?.tag as? Boolean ?: false
-
-            if (isItemSelected) {
-                // Reset the background color of the clicked item to the default color
-                clickedItemView?.setBackgroundColor(Color.WHITE)
-                clickedItemView?.tag = false
-
-                // Deselect the ingredient if it was selected
-                selectedIngredientsTemporary.remove(ingredient)
-            } else {
+//
+//            if (isItemSelected) {
+//                // Reset the background color of the clicked item to the default color
+//                clickedItemView?.setBackgroundColor(Color.WHITE)
+//                clickedItemView?.tag = false
+//
+//                // Deselect the ingredient if it was selected
+//                selectedIngredientsTemporary.remove(ingredient)
+//            } else {
                 // Check if the ingredient is not already in the selectedIngredientsTemporary list
                 if (!selectedIngredientsTemporary.contains(ingredient)) {
                     // Change the background color of the clicked item to the selected color
@@ -496,11 +408,11 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
                     selectedIngredientsTemporary.add(ingredient)
                 } else {
                     // If the ingredient is already in the list, remove it to toggle the selection
-                    //clickedItemView?.setBackgroundColor(Color.WHITE)
+                    clickedItemView?.setBackgroundColor(Color.WHITE)
                     clickedItemView?.tag = false
                     selectedIngredientsTemporary.remove(ingredient)
                 }
-            }
+//            }
         }
 
         val addBtn = bottomSheetView.findViewById<Button>(R.id.addBtn)
@@ -511,7 +423,7 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
             "Select ingredients that you want to clear."
         }
         else{
-            "${selectedIngredientsTemporary.size} ingredient selected."
+            "${selectedIngredientsTemporary.size - 1 } ingredient selected."
         }
 
         Log.d("SelectedIngredients", selectedIngredientsTemporary.toString())

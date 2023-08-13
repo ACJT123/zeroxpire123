@@ -30,13 +30,14 @@ class IngredientAdapter(private val clickListener: IngredientClickListener, priv
     class ViewHolder(view: View): RecyclerView.ViewHolder(view) {
         val textViewIngredientName: TextView = view.findViewById(R.id.ingredientName)
         val textViewDaysLeft: TextView = view.findViewById(R.id.daysLeft)
+        val textViewExpiryDate: TextView = view.findViewById(R.id.expiryDate)
         val textViewDateAdded: TextView = view.findViewById(R.id.dateAdded)
         val isAddedToGoalImage: ImageView = view.findViewById(R.id.isAddedToGoalImage)
+        val imageViewIngredientCategoryImage: ImageView = view.findViewById(R.id.ingredientCategoryImage)
         val imageViewIngredientImage: ImageView = view.findViewById(R.id.ingredientImage)
     }
 
     internal fun setIngredient(ingredient: List<Ingredient>) {
-        originalIngredientList = ingredient
         ingredientList = ingredient
         notifyDataSetChanged()
     }
@@ -53,8 +54,51 @@ class IngredientAdapter(private val clickListener: IngredientClickListener, priv
 
         holder.textViewIngredientName.text = ingredient.ingredientName
 
+
+        when(ingredient.ingredientCategory){
+            "Vegetables" ->
+                Glide.with(holder.itemView.context)
+                .load(R.drawable.vegetable)
+                .into(holder.imageViewIngredientCategoryImage)
+            "Fruits" ->
+                Glide.with(holder.itemView.context)
+                    .load(R.drawable.fruits)
+                    .into(holder.imageViewIngredientCategoryImage)
+            "Meat" ->
+                Glide.with(holder.itemView.context)
+                    .load(R.drawable.meat)
+                    .into(holder.imageViewIngredientCategoryImage)
+            "Seafood" ->
+                Glide.with(holder.itemView.context)
+                    .load(R.drawable.seafood)
+                    .into(holder.imageViewIngredientCategoryImage)
+            "Dairy" ->
+                Glide.with(holder.itemView.context)
+                    .load(R.drawable.dairy)
+                    .into(holder.imageViewIngredientCategoryImage)
+            "Grains" ->
+                Glide.with(holder.itemView.context)
+                    .load(R.drawable.grains)
+                    .into(holder.imageViewIngredientCategoryImage)
+            "Herbs" ->
+                Glide.with(holder.itemView.context)
+                    .load(R.drawable.herbs)
+                    .into(holder.imageViewIngredientCategoryImage)
+            "Oils" ->
+                Glide.with(holder.itemView.context)
+                    .load(R.drawable.oil)
+                    .into(holder.imageViewIngredientCategoryImage)
+            "Legumes" ->
+                Glide.with(holder.itemView.context)
+                    .load(R.drawable.legumes)
+                    .into(holder.imageViewIngredientCategoryImage)
+        }
+
+
         val expiryDate: LocalDate? = ingredient.expiryDate?.toInstant()
             ?.atZone(ZoneId.systemDefault())?.toLocalDate()
+
+        holder.textViewExpiryDate.text = "Expiry Date: ${expiryDate.toString()}"
 
         if (expiryDate != null) {
             val currentDate: LocalDate = LocalDate.now()
@@ -95,49 +139,18 @@ class IngredientAdapter(private val clickListener: IngredientClickListener, priv
         }
 
         if(ingredient.ingredientGoalId != null){
-            // Observe the LiveData for goal details
-            //TODO: use webhost to join table
-            goalViewModel.goalList.observe(holder.itemView.context as LifecycleOwner, Observer { goals ->
-                for (goal in goals){
-                    if(goal.completedDate != null){
-                        Glide.with(holder.itemView.context)
-                            .load(R.drawable.completed_goal)
-                            .into(holder.isAddedToGoalImage)
-                    }
-                    else{
-                        Glide.with(holder.itemView.context)
-                            .load(R.drawable.active_goal)
-                            .into(holder.isAddedToGoalImage)
-                    }
-                }
-            })
-
+            Glide.with(holder.itemView.context)
+                .load(R.drawable.goal)
+                .into(holder.isAddedToGoalImage)
         }
         else{
-
+            holder.isAddedToGoalImage.setImageDrawable(null)
         }
 
         holder.itemView.setOnClickListener {
             clickListener.onIngredientClick(ingredient)
             //Toast.makeText(it.context, ingredient.ingredientName, Toast.LENGTH_SHORT).show()
         }
-
-        // Convert the byte array to a Bitmap
-
-
-// Convert the byte array to a Bitmap
-//        val imageByteArray = ingredient.ingredientImage
-//        Log.d("byteArray", imageByteArray.toString())
-//        val bmp: Bitmap? = imageByteArray?.let { BitmapFactory.decodeByteArray(imageByteArray, 0, it.size) }
-//        Log.d("bitmap", bmp.toString())
-
-
-
-// Load the Bitmap into the ImageView using Glide
-//        Glide.with(holder.itemView.context)
-//            .load(imageBitmap)
-//            .centerCrop()
-//            .into(holder.imageViewIngredientImage)
 
     }
 

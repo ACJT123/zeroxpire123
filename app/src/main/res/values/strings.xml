@@ -123,14 +123,14 @@ Last updated: [Date]\n
     <string-array name="ingredient_categories">
         <item>Vegetables</item>
         <item>Fruits</item>
-        <item>Meat &amp; Poultry</item>
+        <item>Meat</item>
         <item>Seafood</item>
-        <item>Dairy &amp; Alternatives</item>
-        <item>Grains &amp; Cereals</item>
-        <item>Herbs &amp; Spices</item>
-        <item>Oils &amp; Fats</item>
+        <item>Dairy</item>
+        <item>Grains</item>
+        <item>Herbs</item>
+        <item>Oils</item>
         <item>Nuts &amp; Seeds</item>
-        <item>Legumes &amp; Pulses</item>
+        <item>Legumes</item>
         <item>Condiments &amp; Sauces</item>
         <item>Sweeteners &amp; Sweet Products</item>
         <item>Beverages</item>
@@ -141,6 +141,12 @@ Last updated: [Date]\n
         <item>Breakfast Foods</item>
         <item>Eggs &amp; Egg Products</item>
         <item>Pasta &amp; Noodles</item>
+    </string-array>
+    <string-array name="filter_options">
+        <item>Type</item>
+        <item>Expiry Date</item>
+        <item>Goal</item>
+        <item>Is it expired?</item>
     </string-array>
 
 

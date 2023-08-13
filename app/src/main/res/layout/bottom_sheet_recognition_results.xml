@@ -96,7 +96,7 @@
                 android:layout_below="@id/mergedTextViewLabel"
                 android:background="#DADADA" />
 
-            <TextView
+            <EditText
                 android:id="@+id/mergedTextView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

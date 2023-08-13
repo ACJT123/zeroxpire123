@@ -56,9 +56,26 @@ class IngredientRepository(private val ingredientDao: IngredientDao){
     }
 
     @WorkerThread
+    fun getAllIngredientsWithoutGoalId(): LiveData<List<Ingredient>>{
+        return ingredientDao.getAllIngredientsWithoutGoalId()
+    }
+
+    @WorkerThread
     fun sortByName(): LiveData<List<Ingredient>> {
         return ingredientDao.sortByName()
     }
+
+    @WorkerThread
+    fun sortByExpiryDate(): LiveData<List<Ingredient>> {
+        return ingredientDao.sortByExpiryDate()
+    }
+
+
+    @WorkerThread
+    fun sortByExpiryDateDesc(): LiveData<List<Ingredient>> {
+        return ingredientDao.sortByExpiryDateDesc()
+    }
+
 
     @WorkerThread
     fun sortByDateAdded(): LiveData<List<Ingredient>> {

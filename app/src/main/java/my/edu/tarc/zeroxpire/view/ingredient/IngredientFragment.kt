@@ -1,37 +1,31 @@
 package my.edu.tarc.zeroxpire.view.ingredient
 
-import android.Manifest
 import android.app.AlertDialog
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.ProgressDialog
 import android.content.Context
-import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.drawable.Drawable
 import android.icu.util.Calendar
+import android.media.MicrophoneInfo.Coordinate3F
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.SearchView
-import android.widget.Toast
+import android.widget.*
 import androidx.activity.OnBackPressedCallback
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import androidx.core.content.ContextCompat.getSystemService
 import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.setFragmentResult
-import androidx.fragment.app.setFragmentResultListener
 import androidx.lifecycle.Observer
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -43,14 +37,16 @@ import com.android.volley.RequestQueue
 import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.Volley
 import com.bumptech.glide.Glide
-import com.bumptech.glide.request.target.CustomTarget
-import com.bumptech.glide.request.transition.Transition
 import com.google.android.material.bottomappbar.BottomAppBar
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.chip.Chip
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import it.xabaras.android.recyclerview.swipedecorator.RecyclerViewSwipeDecorator
+import koleton.api.hideSkeleton
+import koleton.api.loadSkeleton
 import my.edu.tarc.zeroxpire.R
 import my.edu.tarc.zeroxpire.WebDB
 import my.edu.tarc.zeroxpire.adapters.IngredientAdapter
@@ -81,6 +77,8 @@ class IngredientFragment : Fragment(), IngredientClickListener {
     private var id: Int = 0
 
     private var progressDialog: ProgressDialog? = null
+    private lateinit var bottomSheetView: View
+    private lateinit var bottomSheetDialog: BottomSheetDialog
 
     val CHANNEL_ID = "channelID"
     val CHANNEL_NAME = "channelName"
@@ -144,11 +142,141 @@ class IngredientFragment : Fragment(), IngredientClickListener {
         })
 
         sortIngredient(adapter)
+
+        binding.filterBtn.setOnClickListener{
+            filterIngredient(adapter)
+        }
+
         searchIngredient(adapter)
         delete(adapter)
         greeting()
         navigateBack()
     }
+
+    private fun filterIngredient(adapter: IngredientAdapter) {
+        bottomSheetDialog = BottomSheetDialog(requireContext())
+        val bottomSheetView = layoutInflater.inflate(R.layout.dialog_filter, null)
+
+        val resetButton = bottomSheetView.findViewById<Button>(R.id.resetButton)
+
+        resetButton.setOnClickListener {
+            // Clear all filters and show the original list
+            adapter.setIngredient(ingredientViewModel.ingredientList.value ?: emptyList())
+            bottomSheetDialog.dismiss() // Close the bottom sheet after resetting
+        }
+        bottomSheetDialog.setContentView(bottomSheetView)
+        bottomSheetDialog.show()
+
+        applyFilters(adapter, bottomSheetView)
+    }
+
+    private fun applyFilters(adapter: IngredientAdapter, bottomSheetView: View) {
+
+        val expired = bottomSheetView.findViewById<RadioButton>(R.id.radioExpired)
+        val notExpired = bottomSheetView.findViewById<RadioButton>(R.id.radioNotExpired)
+        val isGoal = bottomSheetView.findViewById<RadioButton>(R.id.radioIsGoal)
+        val isNotGoal = bottomSheetView.findViewById<RadioButton>(R.id.radioIsNotGoal)
+        val vegChip = bottomSheetView.findViewById<Chip>(R.id.chipVegetables)
+        val meatChip = bottomSheetView.findViewById<Chip>(R.id.chipMeats)
+        val fruitsChip = bottomSheetView.findViewById<Chip>(R.id.chipFruits)
+        val seafoodChip = bottomSheetView.findViewById<Chip>(R.id.chipSeafood)
+        val applyBtn = bottomSheetView.findViewById<Button>(R.id.applyButton)
+
+        applyBtn.setOnClickListener {
+            var filteredIngredients = ingredientViewModel.ingredientList.value ?: emptyList()
+
+            val today = Calendar.getInstance()
+            today.set(Calendar.HOUR_OF_DAY, 0)
+            today.set(Calendar.MINUTE, 0)
+            today.set(Calendar.SECOND, 0)
+            today.set(Calendar.MILLISECOND, 0)
+
+            if (expired.isChecked) {
+                filteredIngredients = filteredIngredients.filter { ingredient ->
+                    ingredient.expiryDate.before(today.time)
+                }
+            }
+
+            if (notExpired.isChecked) {
+                filteredIngredients = filteredIngredients.filter { ingredient ->
+                    ingredient.expiryDate.after(today.time) || ingredient.expiryDate == today.time
+                }
+            }
+
+            if (isGoal.isChecked) {
+                filteredIngredients = filteredIngredients.filter { ingredient ->
+                    ingredient.ingredientGoalId != null
+                }
+            }
+
+            if (isNotGoal.isChecked) {
+                filteredIngredients = filteredIngredients.filter { ingredient ->
+                    ingredient.ingredientGoalId == null
+                }
+            }
+
+            if (vegChip.isChecked) {
+                filteredIngredients = filteredIngredients.filter { ingredient ->
+                    ingredient.ingredientCategory == "Vegetables"
+                }
+                vegChip.setChipBackgroundColorResource(R.color.chip_selected_color)
+            } else {
+                vegChip.setChipBackgroundColorResource(R.color.chip_unselected_color)
+            }
+
+            if (meatChip.isChecked) {
+                filteredIngredients = filteredIngredients.filter { ingredient ->
+                    ingredient.ingredientCategory == "Meat"
+                }
+            }
+
+            if (fruitsChip.isChecked) {
+                filteredIngredients = filteredIngredients.filter { ingredient ->
+                    ingredient.ingredientCategory == "Fruits"
+                }
+            }
+
+            if (seafoodChip.isChecked) {
+                filteredIngredients = filteredIngredients.filter { ingredient ->
+                    ingredient.ingredientCategory == "Seafood"
+                }
+            }
+
+
+            adapter.setIngredient(filteredIngredients)
+            bottomSheetDialog.dismiss()
+        }
+    }
+
+
+
+
+//    private fun applyFilter(filterOption: String, adapter: IngredientAdapter) {
+//
+//
+//        val filteredIngredients = when (filterOption) {
+//            "Expired" -> allIngredients.filter { ingredient ->
+//                ingredient.expiryDate.before(Date()) // Ingredients that have expired
+//            }
+//            "Not Expired" -> allIngredients.filter { ingredient ->
+//                ingredient.expiryDate.after(Date()) // Ingredients that haven't expired
+//            }
+//            "Not Attached to Goal" -> allIngredients.filter { ingredient ->
+//                ingredient.ingredientGoalId == null // Ingredients not attached to a goal
+//            }
+//            "Grains", "Fruits", "Vegetables" -> allIngredients.filter { ingredient ->
+//                ingredient.ingredientCategory == filterOption // Ingredients with selected category
+//            }
+//            "All" -> allIngredients // Show all ingredients
+//            else -> emptyList() // Default case, no matching filter option
+//        }
+//
+//        binding.notFoundText.visibility = if (filteredIngredients.isEmpty()) View.VISIBLE else View.GONE
+//        binding.allIngredientsTextView.visibility = if (filteredIngredients.isEmpty()) View.GONE else View.VISIBLE
+//
+//
+//    }
+
 
     private fun getUsername(){
         val url: String = getString(R.string.url_server) + getString(R.string.url_read_username) + "?userId=${auth.currentUser?.uid}"
@@ -255,27 +383,54 @@ class IngredientFragment : Fragment(), IngredientClickListener {
         }
     }
     private fun sortIngredient(adapter: IngredientAdapter) {
+        var sortMode = SortMode.BY_EXPIRY_DATE_ASC
+
         binding.sortBtn.setOnClickListener {
-            if (!isSort) {
-                ingredientViewModel.sortByName()
-                binding.sortBtn.setBackgroundResource(R.drawable._023915_sort_ascending_fill_icon)
-                isSort = true
-            } else {
-                ingredientViewModel.ingredientList.value?.let { ingredients ->
-                    val sortedIngredients = ingredients.sortedBy { it.ingredientName }
-                    adapter.setIngredient(sortedIngredients)
+            when (sortMode) {
+                SortMode.BY_EXPIRY_DATE_ASC -> {
+                    ingredientViewModel.sortByExpiryDate().observe(viewLifecycleOwner, Observer {
+
+                        Log.d("expSortAsc", it.toString())
+                        adapter.setIngredient(it)
+                    })
+                    binding.sortBtn.setBackgroundResource(R.drawable._023915_sort_ascending_fill_icon)
+                    sortMode = SortMode.BY_EXPIRY_DATE_DESC
                 }
-                binding.sortBtn.setBackgroundResource(R.drawable.baseline_sort_24)
-                isSort = false
+                SortMode.BY_EXPIRY_DATE_DESC -> {
+                    ingredientViewModel.sortByExpiryDateDesc().observe(viewLifecycleOwner, Observer {
+                        Log.d("expSortDesc", it.toString())
+                        adapter.setIngredient(it)
+                    })
+                    binding.sortBtn.setBackgroundResource(R.drawable._023914_sort_descending_fill_icon)
+                    sortMode = SortMode.BY_DATE_ADDED
+                }
+                SortMode.BY_DATE_ADDED -> {
+                    ingredientViewModel.sortByDateAdded().observe(viewLifecycleOwner,  Observer {
+                        Log.d("dateAddedsort", it.toString())
+                        adapter.setIngredient(it)
+                    })
+                    binding.sortBtn.setBackgroundResource(R.drawable.baseline_sort_24)
+                    sortMode = SortMode.BY_EXPIRY_DATE_ASC
+                }
             }
         }
     }
 
+    enum class SortMode {
+        BY_EXPIRY_DATE_ASC,
+        BY_EXPIRY_DATE_DESC,
+        BY_DATE_ADDED
+    }
+
+
+
+
     private fun loadIngredient(adapter: IngredientAdapter) {
-        progressDialog = ProgressDialog(requireContext())
-        progressDialog?.setMessage("Loading...")
-        progressDialog?.setCancelable(false)
-        progressDialog?.show()
+//        progressDialog = ProgressDialog(requireContext())
+//        progressDialog?.setMessage("Loading...")
+//        progressDialog?.setCancelable(false)
+//        progressDialog?.show()
+        binding.recyclerview.loadSkeleton()
         val url: String = getString(R.string.url_server) + getString(R.string.url_read_ingredient) + "?userId=${auth.currentUser?.uid}"
         Log.d("uid", auth.currentUser?.uid.toString())
         val jsonObjectRequest = JsonObjectRequest(
@@ -348,6 +503,7 @@ class IngredientFragment : Fragment(), IngredientClickListener {
 
                         // Dismiss the progress dialog when finished loading ingredients
                         progressDialog?.dismiss()
+                        binding.recyclerview.hideSkeleton()
                         binding.sortBtn.visibility = View.VISIBLE
                         binding.allIngredientsTextView.visibility = View.VISIBLE
                         binding.recyclerview.visibility = View.VISIBLE
@@ -369,8 +525,8 @@ class IngredientFragment : Fragment(), IngredientClickListener {
                 ingredientViewModel.deleteAllIngredients()
                 binding.recyclerview.visibility = View.INVISIBLE
                 binding.emptyHereContent.visibility  = View.VISIBLE
-                binding.ingredientSearchView.visibility = View.INVISIBLE
-                binding.labels.visibility = View.INVISIBLE
+                //binding.ingredientSearchView.visibility = View.INVISIBLE
+                //binding.labels.visibility = View.INVISIBLE
                 binding.notFoundText.visibility = View.INVISIBLE
                 progressDialog?.dismiss()
             }
@@ -458,6 +614,10 @@ class IngredientFragment : Fragment(), IngredientClickListener {
                 val builder = AlertDialog.Builder(requireContext())
                 builder.setMessage("Are you sure you want to Delete?").setCancelable(false)
                     .setPositiveButton("Delete") { dialog, id ->
+                        progressDialog = ProgressDialog(requireContext())
+                        progressDialog?.setMessage("Deleting...")
+                        progressDialog?.setCancelable(false)
+                        progressDialog?.show()
                         val position = viewHolder.adapterPosition
                         val deletedIngredient = adapter.getIngredientAt(position)
                         ingredientViewModel.deleteIngredient(deletedIngredient)
@@ -466,7 +626,10 @@ class IngredientFragment : Fragment(), IngredientClickListener {
                         val jsonObjectRequest = JsonObjectRequest(Request.Method.POST, url, null,
                             { response ->
                                 // Handle successful deletion response, if required
+                                progressDialog?.dismiss()
+
                                 toast("Ingredient deleted.")
+                                loadIngredient(adapter)
                             },
                             { error ->
                                 // Handle error response, if required
@@ -475,11 +638,9 @@ class IngredientFragment : Fragment(), IngredientClickListener {
                         )
 
                         requestQueue.add(jsonObjectRequest)
-                        loadIngredient(adapter)
                     }.setNegativeButton("Cancel") { dialog, id ->
                         adapter.notifyDataSetChanged()
                         dialog.dismiss()
-
                     }
                 val alert = builder.create()
                 alert.show()

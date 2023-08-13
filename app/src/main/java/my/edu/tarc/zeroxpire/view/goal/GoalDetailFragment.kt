@@ -27,6 +27,7 @@ import java.io.ByteArrayOutputStream
 import java.net.UnknownHostException
 import java.text.SimpleDateFormat
 import androidx.lifecycle.Observer
+import com.google.firebase.auth.FirebaseAuth
 import my.edu.tarc.zeroxpire.WebDB
 import my.edu.tarc.zeroxpire.model.Ingredient
 import my.edu.tarc.zeroxpire.viewmodel.GoalViewModel
@@ -46,6 +47,11 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
     private val ingredientViewModel: IngredientViewModel by activityViewModels()
     private val goalViewModel: GoalViewModel by activityViewModels()
 
+    private lateinit var auth: FirebaseAuth
+
+    private var goalId: Int? = null
+
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -59,9 +65,10 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        auth = FirebaseAuth.getInstance()
+
         val adapter = IngredientAdapter(this, goalViewModel)
 
-        loadIngredient(adapter)
 
         // Set fragment result listeners to receive data from other fragments
         setFragmentResultListener("requestName") { _, bundle ->
@@ -75,6 +82,16 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
             selectedDate = parseDateStringToLong(dateString)
             binding.chooseExpiryDate.setText(dateString)
         }
+
+        setFragmentResultListener("requestId") { _, bundle ->
+            val goalIdd= bundle.getInt("id")
+            goalId = goalIdd
+            Log.d("bundlebundle", bundle.getInt("id").toString())
+
+            loadIngredient(adapter)
+        }
+
+
 
         // Button click listeners
         binding.upBtn.setOnClickListener {
@@ -94,7 +111,8 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
         progressDialog?.setMessage("Loading...")
         progressDialog?.setCancelable(false)
         progressDialog?.show()
-        val url: String = getString(R.string.url_server) + getString(R.string.url_getGoalIngredients_ingredient)
+        Log.d("goalIddddddddddddd", goalId.toString())
+        val url: String = getString(R.string.url_server) + getString(R.string.url_getGoalIngredients_ingredient) + "?userId=" + auth.currentUser?.uid
         val jsonObjectRequest = JsonObjectRequest(
             Request.Method.GET, url, null,
             { response ->

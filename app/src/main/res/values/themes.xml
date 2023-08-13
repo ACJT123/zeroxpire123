@@ -13,5 +13,6 @@
         <item name="android:statusBarColor">@color/textColor</item>
         <!-- Customize your theme here. -->
         <item name="android:textColor">@color/textColor</item>
+        <item name="fontFamily">@font/myfont</item>
     </style>
 </resources>

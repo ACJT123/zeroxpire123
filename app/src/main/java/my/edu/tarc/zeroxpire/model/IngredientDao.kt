@@ -12,6 +12,8 @@ interface IngredientDao {
     @Query("SELECT * FROM Ingredient")
     fun getAllIngredients(): LiveData<List<Ingredient>>
 
+    @Query("SELECT * FROM Ingredient WHERE ingredientGoalId IS NULL")
+    fun getAllIngredientsWithoutGoalId(): LiveData<List<Ingredient>>
     @Update
     suspend fun updateIngredient(ingredient: Ingredient)
 
@@ -39,6 +41,12 @@ interface IngredientDao {
     //default sorting method
     @Query("SELECT * FROM Ingredient ORDER BY dateAdded ASC")
     fun sortByAdded(): LiveData<List<Ingredient>>
+
+    @Query("SELECT * FROM Ingredient ORDER BY expiryDate ASC")
+    fun sortByExpiryDate(): LiveData<List<Ingredient>>
+
+    @Query("SELECT * FROM Ingredient ORDER BY expiryDate DESC")
+    fun sortByExpiryDateDesc(): LiveData<List<Ingredient>>
 
 
     @Query("SELECT * FROM Ingredient WHERE expiryDate >= :startDate AND expiryDate <= :endDate")

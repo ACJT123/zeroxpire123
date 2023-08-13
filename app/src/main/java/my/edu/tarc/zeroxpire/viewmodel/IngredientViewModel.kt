@@ -52,12 +52,23 @@ class IngredientViewModel(application: Application) : AndroidViewModel(applicati
         repository.updateExpiryDate(id, newDate)
     }
 
-    fun sortByName() = viewModelScope.launch {
-        repository.sortByName()
+    fun getAllIngredientsWithoutGoalId(): LiveData<List<Ingredient>>{
+        return repository.getAllIngredientsWithoutGoalId()
+    }
+    fun sortByName(): LiveData<List<Ingredient>> {
+        return repository.sortByName()
     }
 
-    fun sortByDateAdded() = viewModelScope.launch {
-        repository.sortByDateAdded()
+    fun sortByExpiryDate(): LiveData<List<Ingredient>> {
+        return repository.sortByExpiryDate()
+    }
+
+    fun sortByExpiryDateDesc(): LiveData<List<Ingredient>> {
+        return repository.sortByExpiryDateDesc()
+    }
+
+    fun sortByDateAdded(): LiveData<List<Ingredient>> {
+        return repository.sortByDateAdded()
     }
 
     fun getIngredientById(id: Int): LiveData<List<Ingredient>> {
@@ -78,7 +89,6 @@ class IngredientViewModel(application: Application) : AndroidViewModel(applicati
 //    fun getIngredientsWithinPeriod(startDate: Long, endDate: Long): LiveData<List<Ingredient>> {
 //        return repository.getIngredientsWithinPeriod(startDate, endDate)
 //    }
-
 
 
 }

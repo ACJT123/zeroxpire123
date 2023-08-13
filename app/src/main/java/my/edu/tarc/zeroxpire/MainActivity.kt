@@ -31,10 +31,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.os.bundleOf
-import androidx.core.view.size
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.NavController
-import androidx.navigation.findNavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.ui.setupWithNavController
@@ -48,7 +46,6 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.card.MaterialCardView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
@@ -435,18 +432,24 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
                 .addOnSuccessListener { text ->
                     progressDialog.dismiss()
 
-                    val dates = findAllDatesInText(text.text)
-                    Log.d("dates", dates.toString())
+                    try {
+                        val dates = findAllDatesInText(text.text)
+                        Log.d("dates", dates.toString())
 
-                    if (dates.isNotEmpty()) {
-                        recognizedExpiryDates = dates.joinToString(separator = "\n")
-                        Log.d("recooogDate", recognizedExpiryDates.toString())
+                        if (dates.isNotEmpty()) {
+                            recognizedExpiryDates = dates.joinToString(separator = "\n")
+                            Log.d("recooogDate", recognizedExpiryDates.toString())
 
-                        // Display the bottom sheet for date selection
-                        displayRecognitionResultsDate(recognizedExpiryDates!!)
-                    } else {
-                        // Handle the case when no dates are found
-                        // You might want to show an error message or provide feedback to the user
+                            // Display the bottom sheet for date selection
+                            displayRecognitionResultsDate(recognizedExpiryDates!!)
+                        } else {
+                            // Handle the case when no dates are found
+                            progressDialog.dismiss()
+                            byRecognitionDate()
+                            toast("try again")
+                        }
+                    } catch (e: Exception) {
+                        Log.d("unparsable", e.toString())
                     }
                 }
                 .addOnFailureListener { e ->
@@ -460,6 +463,7 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
             // Handle the exception
         }
     }
+
 
 
     private fun displayRecognitionResultsDate(results: String) {
@@ -519,6 +523,7 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
             )
             Log.d("bundle", bundle.toString())
             navController.navigate(R.id.action_ingredientFragment_to_addIngredientFragment, bundle)
+            selectedRecognizedName.clear()
             disableBtmNav()
         } else {
             // Handle the case when either the name or the date is not recognized
@@ -536,25 +541,36 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
     }
 
     private fun findAllDatesInText(text: String): List<String> {
-        Log.d("scannedDate", text)
-        val dateFormatInput = SimpleDateFormat("dd.MM.yyyy", Locale.US)
-        val dateFormatOutput = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        val possibleDateFormats = listOf(
+            SimpleDateFormat("dd.MM.yyyy", Locale.US),
+            SimpleDateFormat("dd/MM/yyyy", Locale.US),
+            SimpleDateFormat("MM/dd/yyyy", Locale.US),
+            SimpleDateFormat("yyyy-MM-dd", Locale.US),
+            SimpleDateFormat("yyyy/MM/dd", Locale.US)
+            // Add more date formats as needed
+        )
+
         val formattedDates = mutableListOf<String>()
 
-        val regex = "\\b\\d{2}\\.\\d{2}\\.\\d{4}\\b".toRegex()
-        val matchResults = regex.findAll(text)
+        for (dateFormat in possibleDateFormats) {
+            val regex = "\\b\\d{2}[./-]\\d{2}[./-]\\d{4}\\b".toRegex()
+            val matchResults = regex.findAll(text)
 
-        matchResults.forEach { matchResult ->
-            try {
-                val date = dateFormatInput.parse(matchResult.value)
-                date?.let { formattedDates.add(dateFormatOutput.format(it)) }
-            } catch (e: Exception) {
-                // Invalid date format, ignore and continue searching
+            matchResults.forEach { matchResult ->
+                try {
+                    val date = dateFormat.parse(matchResult.value)
+                    date?.let { formattedDates.add(dateFormat.format(it)) }
+                } catch (e: Exception) {
+                    println("Error parsing date: ${e.message}")
+                }
             }
         }
 
         return formattedDates
     }
+
+
+
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun reminder(ingredient: Ingredient) {

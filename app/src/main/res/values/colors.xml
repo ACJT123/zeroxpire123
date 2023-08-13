@@ -13,4 +13,7 @@
     <color name="secondaryColor">#EAA362</color>
     <color name="btnColor">#7E9F5E</color>
     <color name="btnColorDisabled">#C37E9F5E</color>
+    <color name="chip_selected_color">#FF5733</color>
+    <color name="chip_unselected_color">#E0E0E0</color>
+
 </resources>
