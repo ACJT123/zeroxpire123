@@ -63,13 +63,51 @@
 <!--                android:clickable="true"-->
 <!--                android:padding="35dp" />-->
 
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/labels"
+                android:layout_marginStart="20dp"
+                android:layout_marginEnd="20dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <TextView
+                    android:id="@+id/allIngredientsTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:text="@string/all_ingredients"
+                    android:visibility="visible"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"/>
+
+                <ImageView
+                    android:id="@+id/sortBtn"
+                    android:visibility="visible"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"/>
+
+                <ImageView
+                    android:background="@drawable/baseline_filter_alt_24"
+                    android:layout_marginEnd="10dp"
+                    android:id="@+id/filterBtn"
+                    android:visibility="visible"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:layout_constraintEnd_toStartOf="@id/sortBtn"
+                    app:layout_constraintTop_toTopOf="parent"/>
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
             <androidx.recyclerview.widget.RecyclerView
                 android:layout_marginStart="20dp"
                 android:layout_marginEnd="20dp"
                 android:id="@+id/ingredientsInGoal"
                 android:layout_width="match_parent"
                 android:layout_height="150dp"
-                android:layout_marginTop="40dp"
                 android:scrollbars="vertical"
                 tools:listitem="@layout/card_view_design" />
 
@@ -81,7 +119,7 @@
                 android:layout_marginTop="30dp"
                 android:layout_marginStart="20dp"
                 android:layout_marginEnd="20dp"
-                android:hint="@string/ingredient_name"
+                android:hint="@string/goal_name"
                 app:hintTextAppearance="@style/HintTextStyle"
                 app:startIconDrawable="@drawable/baseline_person_24">
 
@@ -110,7 +148,7 @@
                     android:layout_height="wrap_content"
                     android:focusable="false"
                     android:inputType="none"
-                    android:hint="Expiration Date" />
+                    android:hint="Target Completion Date" />
 
             </com.google.android.material.textfield.TextInputLayout>
 

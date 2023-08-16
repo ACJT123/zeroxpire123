@@ -84,18 +84,18 @@
                     android:orientation="vertical"
                     app:layout_constraintGuide_begin="290dp" />
 
-                <ImageView
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
-                    android:layout_marginStart="20dp"
-                    android:layout_marginTop="20dp"
-                    android:layout_marginEnd="10dp"
-                    android:layout_marginBottom="20dp"
-                    android:background="@drawable/share_square"
-                    app:layout_constraintBottom_toTopOf="@+id/view"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toStartOf="@id/guideline1"
-                    app:layout_constraintTop_toTopOf="parent" />
+<!--                <ImageView-->
+<!--                    android:layout_width="18dp"-->
+<!--                    android:layout_height="18dp"-->
+<!--                    android:layout_marginStart="20dp"-->
+<!--                    android:layout_marginTop="20dp"-->
+<!--                    android:layout_marginEnd="10dp"-->
+<!--                    android:layout_marginBottom="20dp"-->
+<!--                    android:background="@drawable/share_square"-->
+<!--                    app:layout_constraintBottom_toTopOf="@+id/view"-->
+<!--                    app:layout_constraintEnd_toEndOf="parent"-->
+<!--                    app:layout_constraintStart_toStartOf="@id/guideline1"-->
+<!--                    app:layout_constraintTop_toTopOf="parent" />-->
 
                 <View
                     android:id="@+id/view"
@@ -116,33 +116,33 @@
             android:textSize="20sp"
             android:textStyle="bold" />
 
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/editProfileCard"
-            android:clickable="true"
-            android:focusable="true"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            app:cardBackgroundColor="@color/bgColor"
-            android:layout_marginTop="30dp"
-            app:cardElevation="1dp">
+<!--        <com.google.android.material.card.MaterialCardView-->
+<!--            android:id="@+id/editProfileCard"-->
+<!--            android:clickable="true"-->
+<!--            android:focusable="true"-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="50dp"-->
+<!--            app:cardBackgroundColor="@color/bgColor"-->
+<!--            android:layout_marginTop="30dp"-->
+<!--            app:cardElevation="1dp">-->
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center|start"
-                android:layout_marginStart="20dp"
-                android:drawablePadding="20dp"
-                android:text="@string/edit_profile"
-                app:drawableStartCompat="@drawable/baseline_edit_24" />
+<!--            <TextView-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_gravity="center|start"-->
+<!--                android:layout_marginStart="20dp"-->
+<!--                android:drawablePadding="20dp"-->
+<!--                android:text="@string/edit_profile"-->
+<!--                app:drawableStartCompat="@drawable/baseline_edit_24" />-->
 
-            <ImageView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center|end"
-                android:layout_marginEnd="30dp"
-                android:background="@drawable/baseline_keyboard_arrow_right_24" />
+<!--            <ImageView-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_gravity="center|end"-->
+<!--                android:layout_marginEnd="30dp"-->
+<!--                android:background="@drawable/baseline_keyboard_arrow_right_24" />-->
 
-        </com.google.android.material.card.MaterialCardView>
+<!--        </com.google.android.material.card.MaterialCardView>-->
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/notificationsCard"

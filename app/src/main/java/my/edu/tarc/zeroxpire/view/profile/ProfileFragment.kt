@@ -74,12 +74,12 @@ class ProfileFragment : Fragment() {
             disableBtmNav()
         }
 
-        binding.editProfileCard.setOnClickListener {
-            findNavController().navigate(R.id.action_profileFragment_to_editProfileFragment)
-            setFragmentResult("requestName", bundleOf("name" to username))
-            setFragmentResult("requestProfilePic", bundleOf("profilePic" to profilePictureUrl))
-            disableBtmNav()
-        }
+//        binding.editProfileCard.setOnClickListener {
+//            findNavController().navigate(R.id.action_profileFragment_to_editProfileFragment)
+//            setFragmentResult("requestName", bundleOf("name" to username))
+//            setFragmentResult("requestProfilePic", bundleOf("profilePic" to profilePictureUrl))
+//            disableBtmNav()
+//        }
 
         binding.logoutBtn.setOnClickListener {
             val builder = AlertDialog.Builder(requireContext())

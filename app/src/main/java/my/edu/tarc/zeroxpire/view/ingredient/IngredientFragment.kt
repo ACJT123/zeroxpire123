@@ -191,6 +191,7 @@ class IngredientFragment : Fragment(), IngredientClickListener {
             today.set(Calendar.SECOND, 0)
             today.set(Calendar.MILLISECOND, 0)
 
+
             if (expired.isChecked) {
                 filteredIngredients = filteredIngredients.filter { ingredient ->
                     ingredient.expiryDate.before(today.time)

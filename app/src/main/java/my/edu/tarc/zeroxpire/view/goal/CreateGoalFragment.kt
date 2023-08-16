@@ -190,11 +190,15 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
 
     private fun updateGoalIdForIngredient(goalId: Int){
 //        var url: String? = null
-        for(ingredient in selectedIngredients){
-            val url = getString(R.string.url_server) + getString(R.string.url_updateGoalIdForIngredient_goal) +
-                    "?goalId=" + goalId + "&ingredientId=" + ingredient.ingredientId
-            Log.d("ingredientID", ingredient.ingredientId.toString())
-            Log.d("goalId", goalId.toString())
+//        for(ingredient in selectedIngredients){
+
+        val ingredientIds = selectedIngredients.joinToString("&ingredientIDArr[]=") { it.ingredientId.toString() }
+        val url = getString(R.string.url_server) + getString(R.string.url_updateGoalIdForIngredient_goal) +
+                "?goalId=" + goalId + "&ingredientIDArr[]=$ingredientIds"
+
+//            Log.d("ingredientID", ingredient.ingredientId.toString()
+            Log.d("urlCreateGOal", url)
+            Log.d("goalIdCreateGoal", goalId.toString())
             val jsonObjectRequest = JsonObjectRequest(
                 Request.Method.POST, url, null,
                 { response ->
@@ -222,7 +226,7 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
             )
             jsonObjectRequest.retryPolicy = DefaultRetryPolicy(DefaultRetryPolicy.DEFAULT_TIMEOUT_MS, 0, 1f)
             WebDB.getInstance(requireContext()).addToRequestQueue(jsonObjectRequest)
-        }
+//        }
 
         progressDialog?.dismiss()
         Toast.makeText(requireContext(), "GoalID is updated successfully.", Toast.LENGTH_SHORT).show()

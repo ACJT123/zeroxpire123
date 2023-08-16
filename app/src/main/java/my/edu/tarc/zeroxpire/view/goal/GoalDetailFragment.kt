@@ -112,7 +112,8 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
         progressDialog?.setCancelable(false)
         progressDialog?.show()
         Log.d("goalIddddddddddddd", goalId.toString())
-        val url: String = getString(R.string.url_server) + getString(R.string.url_getGoalIngredients_ingredient) + "?userId=" + auth.currentUser?.uid
+        val url: String = getString(R.string.url_server) + getString(R.string.url_getGoalIngredients_ingredient) + "?userId=" +
+                auth.currentUser?.uid + "&goalId=" + goalId
         val jsonObjectRequest = JsonObjectRequest(
             Request.Method.GET, url, null,
             { response ->

@@ -38,6 +38,7 @@ import androidx.navigation.fragment.findNavController
 import androidx.navigation.ui.setupWithNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.work.*
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
@@ -55,6 +56,7 @@ import my.edu.tarc.zeroxpire.adapters.RecognitionResultsAdapterName
 import my.edu.tarc.zeroxpire.databinding.ActivityMainBinding
 import my.edu.tarc.zeroxpire.ingredient.IngredientClickListener
 import my.edu.tarc.zeroxpire.model.Ingredient
+import my.edu.tarc.zeroxpire.view.ingredient.IngredientWorker
 import my.edu.tarc.zeroxpire.viewmodel.GoalViewModel
 import my.edu.tarc.zeroxpire.viewmodel.IngredientViewModel
 import java.text.SimpleDateFormat
@@ -62,6 +64,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity(), IngredientClickListener {
     private lateinit var binding: ActivityMainBinding
@@ -109,6 +112,21 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+
+        val workManager = WorkManager.getInstance(applicationContext)
+        val repeatInterval = 1L // Set the desired repeat interval in hours
+
+        val workRequest = PeriodicWorkRequest.Builder(
+            IngredientWorker::class.java,
+            repeatInterval, TimeUnit.HOURS
+        ).build()
+
+        workManager.enqueueUniquePeriodicWork(
+            "ingredient_work",
+            ExistingPeriodicWorkPolicy.KEEP,
+            workRequest
+        )
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -165,6 +183,7 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
         disableBtmNav()
 
         if (auth.currentUser != null) {
+            scheduleIngredientWorker() // Schedule the worker here
             navController.navigate(R.id.ingredientFragment)
             navController.clearBackStack(R.id.ingredientFragment)
             enableBtmNav()
@@ -569,73 +588,20 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
         return formattedDates
     }
 
+    private fun scheduleIngredientWorker() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED) // Set network requirements if needed
+            .build()
 
+        val periodicWorkRequest = PeriodicWorkRequest.Builder(
+            IngredientWorker::class.java,
+            1, // Set the repeat interval
+            TimeUnit.DAYS
+        )
+            .setConstraints(constraints)
+            .build()
 
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun reminder(ingredient: Ingredient) {
-        val notificationManager = NotificationManagerCompat.from(this)
-        val expiryDate: LocalDate? =
-            ingredient.expiryDate.toInstant()?.atZone(ZoneId.systemDefault())?.toLocalDate()
-
-        if (expiryDate != null) {
-            val currentDate: LocalDate = LocalDate.now()
-            val absoluteDaysLeft: Long = ChronoUnit.DAYS.between(currentDate, expiryDate)
-
-            val expiryMessage = when {
-                absoluteDaysLeft == 0L -> "today"
-                absoluteDaysLeft > 1L -> "in $absoluteDaysLeft days"
-                else -> "in $absoluteDaysLeft day"
-            }
-
-            if (absoluteDaysLeft <= 5) {
-                val channelId = CHANNEL_ID // Use the same channel ID created earlier
-                val notificationId =
-                    ingredient.ingredientId // You can use a unique ID for each notification
-
-                val notificationBuilder = NotificationCompat.Builder(this, channelId)
-                    .setSmallIcon(R.mipmap.ic_launcher)
-                    .setContentTitle("Expiry Date Alert")
-                    .setContentText("${ingredient.ingredientName} expires $expiryMessage")
-                    .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                    .setAutoCancel(true)
-
-                // Load the ingredientImage using Glide and convert it to a Bitmap
-                Glide.with(this)
-                    .asBitmap()
-                    .load(ingredient.ingredientImage) // Replace 'ingredientImage' with the actual URL
-                    .into(object : CustomTarget<Bitmap>() {
-                        override fun onResourceReady(
-                            resource: Bitmap,
-                            transition: Transition<in Bitmap>?
-                        ) {
-                            // Set the Bitmap as the large icon for the notification
-                            notificationBuilder.setLargeIcon(resource)
-                            notificationManager.notify(notificationId, notificationBuilder.build())
-                        }
-
-                        override fun onLoadCleared(placeholder: Drawable?) {
-                            // Do nothing
-                        }
-                    })
-
-                if (ActivityCompat.checkSelfPermission(
-                        this,
-                        Manifest.permission.POST_NOTIFICATIONS
-                    ) != PackageManager.PERMISSION_GRANTED
-                ) {
-                    // TODO: Consider calling
-                    //    ActivityCompat#requestPermissions
-                    // here to request the missing permissions, and then overriding
-                    //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-                    //                                          int[] grantResults)
-                    // to handle the case where the user grants the permission. See the documentation
-                    // for ActivityCompat#requestPermissions for more details.
-                    return
-                }
-                notificationManager.notify(notificationId, notificationBuilder.build())
-            }
-        }
+        WorkManager.getInstance(this).enqueue(periodicWorkRequest)
     }
 
 
@@ -709,6 +675,5 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
 
         Log.d("Ingredients", selectedIngredients.toString())
     }
-
 
 }

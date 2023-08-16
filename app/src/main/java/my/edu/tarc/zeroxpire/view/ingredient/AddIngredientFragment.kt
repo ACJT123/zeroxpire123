@@ -64,6 +64,7 @@ class AddIngredientFragment : Fragment() {
 
     private var progressDialog: ProgressDialog? = null
 
+    //TODO: ensure choosing category, otherwise in ingredient fragment will cause mxing of the category 
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
