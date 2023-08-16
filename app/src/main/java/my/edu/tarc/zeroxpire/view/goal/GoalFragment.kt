@@ -48,6 +48,7 @@ import my.edu.tarc.zeroxpire.databinding.FragmentGoalBinding
 import my.edu.tarc.zeroxpire.goal.GoalClickListener
 import my.edu.tarc.zeroxpire.model.Goal
 import my.edu.tarc.zeroxpire.viewmodel.GoalViewModel
+import my.edu.tarc.zeroxpire.viewmodel.IngredientViewModel
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.UnknownHostException
@@ -62,6 +63,8 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
     private lateinit var pieChart: PieChart
 
     private lateinit var auth: FirebaseAuth
+    private val ingredientViewModel: IngredientViewModel by activityViewModels()
+
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -81,7 +84,7 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
 
         pieChart = binding.pieChart
 
-        val adapter = GoalAdapter(this)
+        val adapter = GoalAdapter(this, ingredientViewModel)
 
         loadGoal(adapter)
 

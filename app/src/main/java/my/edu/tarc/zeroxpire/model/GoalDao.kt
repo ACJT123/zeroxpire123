@@ -23,6 +23,8 @@ interface GoalDao {
     @Query("SELECT * FROM Goal ORDER BY dateCreated DESC, goalId DESC LIMIT 1")
     fun getLatestGoal(): Goal?
 
+
+
 //    @Transaction
 //    @Query("SELECT * FROM Goal")
 //    suspend fun fetchGoalsWithIngredients(): LiveData<List<GoalWithIngredients>>

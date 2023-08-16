@@ -55,6 +55,10 @@ class IngredientViewModel(application: Application) : AndroidViewModel(applicati
     fun getAllIngredientsWithoutGoalId(): LiveData<List<Ingredient>>{
         return repository.getAllIngredientsWithoutGoalId()
     }
+
+    fun getIngredientImagesForGoal(goalId: Int): LiveData<List<Ingredient>>{
+        return repository.getIngredientImagesForGoal(goalId)
+    }
     fun sortByName(): LiveData<List<Ingredient>> {
         return repository.sortByName()
     }
