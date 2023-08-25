@@ -100,6 +100,7 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
 
         val addIngredientDialogBtn = binding.addIngredientDialogBtn
 
+
         storedIngredients.clear()
         selectedIngredients.clear()
         selectedIngredientsTemporary.clear()

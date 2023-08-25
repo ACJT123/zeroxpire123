@@ -41,6 +41,7 @@ import com.google.android.material.bottomappbar.BottomAppBar
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.auth.FirebaseAuth
 import it.xabaras.android.recyclerview.swipedecorator.RecyclerViewSwipeDecorator
+import my.edu.tarc.zeroxpire.MainActivity
 import my.edu.tarc.zeroxpire.R
 import my.edu.tarc.zeroxpire.WebDB
 import my.edu.tarc.zeroxpire.adapters.GoalAdapter
@@ -48,7 +49,6 @@ import my.edu.tarc.zeroxpire.databinding.FragmentGoalBinding
 import my.edu.tarc.zeroxpire.goal.GoalClickListener
 import my.edu.tarc.zeroxpire.model.Goal
 import my.edu.tarc.zeroxpire.viewmodel.GoalViewModel
-import my.edu.tarc.zeroxpire.viewmodel.IngredientViewModel
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.UnknownHostException
@@ -63,8 +63,6 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
     private lateinit var pieChart: PieChart
 
     private lateinit var auth: FirebaseAuth
-    private val ingredientViewModel: IngredientViewModel by activityViewModels()
-
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -79,12 +77,13 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
+        val mainActivity = activity as? MainActivity
+        mainActivity?.loadIngredient()
         auth = FirebaseAuth.getInstance()
 
         pieChart = binding.pieChart
 
-        val adapter = GoalAdapter(this, ingredientViewModel)
+        val adapter = GoalAdapter(this)
 
         loadGoal(adapter)
 

@@ -39,6 +39,9 @@ import androidx.navigation.ui.setupWithNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.work.*
+import com.android.volley.DefaultRetryPolicy
+import com.android.volley.Request
+import com.android.volley.toolbox.JsonObjectRequest
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
@@ -50,6 +53,8 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import koleton.api.hideSkeleton
+import koleton.api.loadSkeleton
 import my.edu.tarc.zeroxpire.adapters.IngredientAdapter
 import my.edu.tarc.zeroxpire.adapters.RecognitionResultsAdapterDate
 import my.edu.tarc.zeroxpire.adapters.RecognitionResultsAdapterName
@@ -59,6 +64,9 @@ import my.edu.tarc.zeroxpire.model.Ingredient
 import my.edu.tarc.zeroxpire.view.ingredient.IngredientWorker
 import my.edu.tarc.zeroxpire.viewmodel.GoalViewModel
 import my.edu.tarc.zeroxpire.viewmodel.IngredientViewModel
+import org.json.JSONArray
+import org.json.JSONObject
+import java.net.UnknownHostException
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.ZoneId
@@ -186,6 +194,7 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
             scheduleIngredientWorker() // Schedule the worker here
             navController.navigate(R.id.ingredientFragment)
             navController.clearBackStack(R.id.ingredientFragment)
+            loadIngredient()
             enableBtmNav()
         }
 
@@ -674,6 +683,108 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
         nextBtn.isEnabled = selectedIngredients.isNotEmpty()
 
         Log.d("Ingredients", selectedIngredients.toString())
+    }
+
+    fun loadIngredient() {
+        progressDialog = ProgressDialog(this)
+        progressDialog?.setMessage("Loading...")
+        progressDialog?.setCancelable(false)
+        progressDialog?.show()
+        val url: String = getString(R.string.url_server) + getString(R.string.url_read_ingredient) + "?userId=${auth.currentUser?.uid}"
+        Log.d("uid", auth.currentUser?.uid.toString())
+        val jsonObjectRequest = JsonObjectRequest(
+            Request.Method.GET, url, null,
+            { response ->
+                try {
+                    if (response != null) {
+                        val strResponse = response.toString()
+                        val jsonResponse = JSONObject(strResponse)
+                        val jsonArray: JSONArray = jsonResponse.getJSONArray("records")
+                        val size: Int = jsonArray.length()
+
+                        if (ingredientViewModel.ingredientList.value?.isNotEmpty()!!) {
+                            ingredientViewModel.deleteAllIngredients()
+                        }
+                        Log.d("Size", size.toString())
+
+
+                        if (size > 0) {
+                            for (i in 0 until size) {
+                                val jsonIngredient: JSONObject = jsonArray.getJSONObject(i)
+                                val ingredientId = jsonIngredient.getInt("ingredientId")
+                                val ingredientName = jsonIngredient.getString("ingredientName")
+                                val expiryDateString = jsonIngredient.getString("expiryDate")
+                                val expiryDate =
+                                    SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(expiryDateString)
+                                val expiryDateInMillis = expiryDate?.time ?: 0L
+                                val dateAddedString = jsonIngredient.getString("dateAdded")
+                                val addedDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(dateAddedString)
+                                val dateAddedInMillis = addedDate?.time ?: 0L
+                                val ingredientImage = jsonIngredient.getString("ingredientImage").replace("&amp;", "&")
+                                Log.d("decode", ingredientImage)
+                                val ingredientCategory = jsonIngredient.getString("ingredientCategory")
+                                val isDelete = jsonIngredient.getInt("isDelete")
+                                val goalId = jsonIngredient.optInt("goalId", 0)
+                                val userId = jsonIngredient.getString("userId")
+                                val ingredient: Ingredient
+
+                                if(isDelete == 0){
+                                    if (goalId == 0) {
+                                        ingredient = Ingredient(
+                                            ingredientId,
+                                            ingredientName,
+                                            Date(expiryDateInMillis),
+                                            Date(dateAddedInMillis),
+                                            ingredientImage,
+                                            ingredientCategory,
+                                            isDelete,
+                                            null,
+                                            userId// Set goalId to null when it is 0
+                                        )
+                                    } else {
+                                        ingredient = Ingredient(
+                                            ingredientId,
+                                            ingredientName,
+                                            Date(expiryDateInMillis),
+                                            Date(dateAddedInMillis),
+                                            ingredientImage,
+                                            ingredientCategory,
+                                            isDelete,
+                                            goalId, // Set goalId to its value when it is not 0
+                                            userId
+                                        )
+                                    }
+                                    ingredientViewModel.addIngredient(ingredient)
+                                    Log.d("IngredientCategory", ingredient.ingredientCategory)
+                                }
+                            }
+                        }
+
+                        // Dismiss the progress dialog when finished loading ingredients
+                        progressDialog?.dismiss()
+                    }
+                } catch (e: UnknownHostException) {
+                    Log.d("ContactRepository", "Unknown Host: ${e.message}")
+                    progressDialog?.dismiss()
+                } catch (e: Exception) {
+                    Log.d("Cannot load", "Response: ${e.message}")
+                    progressDialog?.dismiss()
+                }
+            },
+            { error ->
+                //i think is when there is nothing to return then it will return 404
+                ingredientViewModel.deleteAllIngredients()
+                progressDialog?.dismiss()
+            }
+        )
+
+        jsonObjectRequest.retryPolicy = DefaultRetryPolicy(
+            DefaultRetryPolicy.DEFAULT_TIMEOUT_MS,
+            0,
+            1f
+        )
+
+        WebDB.getInstance(this).addToRequestQueue(jsonObjectRequest)
     }
 
 }

@@ -1,42 +1,35 @@
 package my.edu.tarc.zeroxpire.adapters
 
 import android.os.Build
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
-import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.core.content.ContextCompat.getColor
 import androidx.core.content.ContextCompat.getDrawable
-import androidx.lifecycle.LifecycleOwner
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import my.edu.tarc.zeroxpire.R
 import my.edu.tarc.zeroxpire.goal.GoalClickListener
 import my.edu.tarc.zeroxpire.model.Goal
 import my.edu.tarc.zeroxpire.model.Ingredient
-import my.edu.tarc.zeroxpire.viewmodel.IngredientViewModel
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import java.util.*
 
-class GoalAdapter(private val clickListener: GoalClickListener, private val ingredientViewModel: IngredientViewModel) : RecyclerView.Adapter<GoalAdapter.ViewHolder>() {
+class GoalAdapter(private val clickListener: GoalClickListener) : RecyclerView.Adapter<GoalAdapter.ViewHolder>() {
     private var goalList = emptyList<Goal>()
-
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val textViewGoalName: TextView = view.findViewById(R.id.goalName)
         val textViewDaysLeft: TextView = view.findViewById(R.id.daysLeft)
         val goalStateImage: ImageView = view.findViewById(R.id.goalStateImage)
-        val ingredientContainer: LinearLayout = view.findViewById(R.id.listOfIngredientImages) // Replace with the actual ID of your LinearLayout
     }
-
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.goal_recycler_view, parent, false)
@@ -106,9 +99,6 @@ class GoalAdapter(private val clickListener: GoalClickListener, private val ingr
             daysLeftText
         }
 
-        // Load ingredient images based on the goal ID using the IngredientViewModel
-        loadIngredientImages(goal.goalId, holder)
-
         holder.itemView.setOnClickListener {
             clickListener.onGoalClick(goal)
         }
@@ -116,28 +106,6 @@ class GoalAdapter(private val clickListener: GoalClickListener, private val ingr
 
         // Set other data to the views as needed
     }
-
-    private fun loadIngredientImages(goalId: Int, holder: ViewHolder) {
-        // Load ingredients using the IngredientViewModel
-        ingredientViewModel.getIngredientImagesForGoal(goalId).observe(holder.itemView.context as LifecycleOwner) { ingredients ->
-            holder.ingredientContainer.removeAllViews() // Clear existing views
-            holder.ingredientContainer
-
-            Log.d("sizeeeeeeeeeeeeeeee: ", ingredients.size.toString())
-            for (ingredient in ingredients) {
-                val ingredientImageView = ImageView(holder.itemView.context)
-                // Customize the ImageView properties, such as layout parameters, scale type, etc.
-                // Load the ingredient image using Glide and set it to the ImageView
-                Glide.with(holder.itemView.context)
-                    .load(ingredient.ingredientImage)
-                    .into(ingredientImageView)
-
-                // Add the ImageView to the LinearLayout
-                holder.ingredientContainer.addView(ingredientImageView)
-            }
-        }
-    }
-
 
     override fun getItemCount(): Int {
         return goalList.size

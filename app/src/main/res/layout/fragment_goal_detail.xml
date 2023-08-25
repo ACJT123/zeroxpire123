@@ -111,6 +111,16 @@
                 android:scrollbars="vertical"
                 tools:listitem="@layout/card_view_design" />
 
+            <Button
+                android:id="@+id/addIngredientsBtn"
+                android:layout_width="250dp"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="40dp"
+                android:backgroundTint="@color/textColor"
+                android:text="add ingredient" />
+
+
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/enterIngredientNameLayout"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -133,7 +143,7 @@
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/chooseExpiryDateLayout"
+                android:id="@+id/chooseTargetCompletionDateLayout"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_width="340dp"
                 android:layout_height="wrap_content"
@@ -143,7 +153,7 @@
                 app:startIconDrawable="@drawable/baseline_edit_calendar_24">
 
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/chooseExpiryDate"
+                    android:id="@+id/chooseTargetCompletionDate"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:focusable="false"

@@ -57,23 +57,6 @@
             android:layout_width="wrap_content"
             android:layout_height="match_parent"/>
 
-
-        <androidx.constraintlayout.widget.Guideline
-            android:id="@+id/guideline2"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            app:layout_constraintGuide_end="100dp" />
-
-        <LinearLayout
-            android:id="@+id/listOfIngredientImages"
-            app:layout_constraintBottom_toBottomOf="parent"
-            android:layout_width="100dp"
-            android:layout_height="20dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@id/guideline2"
-            android:orientation="horizontal">
-        </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.cardview.widget.CardView>

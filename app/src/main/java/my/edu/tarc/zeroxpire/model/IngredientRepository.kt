@@ -61,11 +61,6 @@ class IngredientRepository(private val ingredientDao: IngredientDao){
     }
 
     @WorkerThread
-    fun getIngredientImagesForGoal(goalId: Int): LiveData<List<Ingredient>>{
-        return ingredientDao.getIngredientImagesForGoal(goalId)
-    }
-
-    @WorkerThread
     fun sortByName(): LiveData<List<Ingredient>> {
         return ingredientDao.sortByName()
     }
@@ -85,6 +80,11 @@ class IngredientRepository(private val ingredientDao: IngredientDao){
     @WorkerThread
     fun sortByDateAdded(): LiveData<List<Ingredient>> {
         return ingredientDao.sortByAdded()
+    }
+
+    @WorkerThread
+    fun getIngredientsByGoalId(ingredientGoalId: Int): LiveData<List<Ingredient>>{
+        return ingredientDao.getIngredientsByGoalId(ingredientGoalId)
     }
 
     @WorkerThread

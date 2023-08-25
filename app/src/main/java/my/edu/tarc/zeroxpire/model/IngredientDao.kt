@@ -55,10 +55,10 @@ interface IngredientDao {
     @Query("SELECT * FROM ingredient WHERE ingredientId = :ingredientId")
     fun getIngredientsById(ingredientId: Int): LiveData<List<Ingredient>>
 
+    @Query("SELECT * FROM ingredient WHERE ingredientGoalId = :ingredientGoalId")
+    fun getIngredientsByGoalId(ingredientGoalId: Int): LiveData<List<Ingredient>>
+
     @Query("UPDATE Ingredient SET ingredientGoalId = :goalId WHERE ingredientId = :ingredientId")
     suspend fun updateGoalId(goalId: Int?, ingredientId: Int)
-
-    @Query("SELECT * FROM Ingredient WHERE ingredientGoalId = :ingredientGoalId")
-    fun getIngredientImagesForGoal(ingredientGoalId: Int): LiveData<List<Ingredient>>
 
 }

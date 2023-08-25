@@ -47,6 +47,7 @@ import com.google.firebase.ktx.Firebase
 import it.xabaras.android.recyclerview.swipedecorator.RecyclerViewSwipeDecorator
 import koleton.api.hideSkeleton
 import koleton.api.loadSkeleton
+import my.edu.tarc.zeroxpire.MainActivity
 import my.edu.tarc.zeroxpire.R
 import my.edu.tarc.zeroxpire.WebDB
 import my.edu.tarc.zeroxpire.adapters.IngredientAdapter
@@ -630,7 +631,8 @@ class IngredientFragment : Fragment(), IngredientClickListener {
                                 progressDialog?.dismiss()
 
                                 toast("Ingredient deleted.")
-                                loadIngredient(adapter)
+                                val mainActivity = activity as? MainActivity
+                                mainActivity?.loadIngredient()
                             },
                             { error ->
                                 // Handle error response, if required
