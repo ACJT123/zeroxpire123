@@ -24,21 +24,6 @@
             app:destination="@id/addIngredientFragment" />
     </fragment>
     <fragment
-        android:id="@+id/activeGoalFragment"
-        android:name="my.edu.tarc.zeroxpire.view.goal.ActiveGoalFragment"
-        android:label="fragment_active_goal"
-        tools:layout="@layout/fragment_active_goal" />
-    <fragment
-        android:id="@+id/completedGoalFragment"
-        android:name="my.edu.tarc.zeroxpire.view.goal.CompletedGoalFragment"
-        android:label="fragment_completed_goal"
-        tools:layout="@layout/fragment_completed_goal" />
-    <fragment
-        android:id="@+id/uncompletedGoalFragment"
-        android:name="my.edu.tarc.zeroxpire.view.goal.UncompletedGoalFragment"
-        android:label="fragment_uncompleted_goal"
-        tools:layout="@layout/fragment_uncompleted_goal" />
-    <fragment
         android:id="@+id/profileFragment"
         android:name="my.edu.tarc.zeroxpire.view.profile.ProfileFragment"
         android:label="fragment_profile"
@@ -63,20 +48,12 @@
     </fragment>
     <fragment
         android:id="@+id/recipeFragment"
-        android:name="my.edu.tarc.zeroxpire.viewRecipe.RecipeFragment"
+        android:name="my.edu.tarc.zeroxpire.recipe.fragment.RecipeFragment"
         android:label="fragment_recipe"
         tools:layout="@layout/fragment_recipe" >
         <action
-            android:id="@+id/action_recipeFragment_to_recipe_search"
-            app:destination="@id/recipeSearch"
-            app:enterAnim="@anim/nav_default_enter_anim"
-            app:exitAnim="@anim/nav_default_exit_anim"
-            app:popEnterAnim="@anim/nav_default_pop_enter_anim"
-            app:popExitAnim="@anim/nav_default_pop_exit_anim"
-            app:popUpTo="@id/recipeFragment" />
-        <action
-            android:id="@+id/action_recipeFragment_to_viewBookmarks"
-            app:destination="@id/viewBookmarks"
+            android:id="@+id/action_recipeFragment_to_bookmarks"
+            app:destination="@id/recipeBookmarksFragment"
             app:enterAnim="@anim/nav_default_enter_anim"
             app:exitAnim="@anim/nav_default_exit_anim"
             app:popEnterAnim="@anim/nav_default_pop_enter_anim"
@@ -84,15 +61,15 @@
             app:popUpTo="@id/recipeFragment" />
         <action
             android:id="@+id/action_recipeFragment_to_recipeDetails"
-            app:destination="@id/recipeDetails"
+            app:destination="@id/recipeDetailsFragment"
             app:enterAnim="@anim/nav_default_enter_anim"
             app:exitAnim="@anim/nav_default_exit_anim"
             app:popEnterAnim="@anim/nav_default_pop_enter_anim"
             app:popExitAnim="@anim/nav_default_pop_exit_anim"
             app:popUpTo="@id/recipeFragment" />
         <action
-            android:id="@+id/action_recipeFragment_to_createRecipe"
-            app:destination="@id/createRecipe"
+            android:id="@+id/action_recipeFragment_to_recipeCreateFragment"
+            app:destination="@id/recipeCreateFragment"
             app:enterAnim="@anim/nav_default_enter_anim"
             app:exitAnim="@anim/nav_default_exit_anim"
             app:popEnterAnim="@anim/nav_default_pop_enter_anim"
@@ -231,34 +208,6 @@
         android:label="fragment_ingredient_detail"
         tools:layout="@layout/fragment_ingredient_detail" />
     <fragment
-        android:id="@+id/recipeSearch"
-        android:name="my.edu.tarc.zeroxpire.viewRecipe.RecipeSearch"
-        android:label="recipe_search"
-        tools:layout="@layout/fragment_recipe_search"/>
-    <fragment
-        android:id="@+id/recipeDetails"
-        android:name="my.edu.tarc.zeroxpire.viewRecipe.RecipeDetails"
-        android:label="fragment_recipe_details"
-        tools:layout="@layout/fragment_recipe_details">
-        <argument
-            android:name="recipeID"
-            app:argType="string" />
-    </fragment>
-    <fragment
-        android:id="@+id/viewBookmarks"
-        android:name="my.edu.tarc.zeroxpire.viewBookmark.ViewBookmarks"
-        android:label="fragment_view_bookmarks"
-        tools:layout="@layout/fragment_view_bookmarks" >
-        <action
-            android:id="@+id/action_viewBookmarks_to_recipeDetails"
-            app:destination="@id/recipeDetails"
-            app:enterAnim="@anim/nav_default_enter_anim"
-            app:exitAnim="@anim/nav_default_exit_anim"
-            app:popEnterAnim="@anim/nav_default_pop_enter_anim"
-            app:popExitAnim="@anim/nav_default_pop_exit_anim"
-            app:popUpTo="@id/viewBookmarks" />
-    </fragment>
-    <fragment
         android:id="@+id/goalDetailFragment"
         android:name="my.edu.tarc.zeroxpire.view.goal.GoalDetailFragment"
         android:label="fragment_goal_detail"
@@ -268,8 +217,31 @@
             app:destination="@id/goalFragment" />
     </fragment>
     <fragment
-        android:id="@+id/createRecipe"
-        android:name="my.edu.tarc.zeroxpire.createRecipe.CreateRecipe"
-        android:label="fragment_create_recipe"
-        tools:layout="@layout/fragment_create_recipe" />
+        android:id="@+id/recipeCreateFragment"
+        android:name="my.edu.tarc.zeroxpire.recipe.fragment.RecipeCreateFragment"
+        android:label="fragment_recipe_create"
+        tools:layout="@layout/fragment_recipe_create" />
+    <fragment
+        android:id="@+id/recipeBookmarksFragment"
+        android:name="my.edu.tarc.zeroxpire.recipe.fragment.BookmarksFragment"
+        android:label="fragment_recipe_bookmarks"
+        tools:layout="@layout/fragment_recipe_bookmarks" >
+        <action
+            android:id="@+id/action_bookmarks_to_recipeDetails"
+            app:destination="@id/recipeDetailsFragment"
+            app:enterAnim="@anim/nav_default_enter_anim"
+            app:exitAnim="@anim/nav_default_exit_anim"
+            app:popEnterAnim="@anim/nav_default_pop_enter_anim"
+            app:popExitAnim="@anim/nav_default_pop_exit_anim"
+            app:popUpTo="@id/recipeBookmarksFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/recipeDetailsFragment"
+        android:name="my.edu.tarc.zeroxpire.recipe.fragment.RecipeDetailsFragment"
+        android:label="fragment_recipe_details"
+        tools:layout="@layout/fragment_recipe_details">
+        <argument
+            android:name="recipeID"
+            app:argType="string" />
+    </fragment>
 </navigation>

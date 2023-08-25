@@ -251,7 +251,7 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
                     enableBtmNav()
                     binding.fab.setImageResource(R.drawable.baseline_book_24)
                     binding.fab.setOnClickListener {
-                        navController.navigate(R.id.action_recipeFragment_to_createRecipe)
+                        navController.navigate(R.id.action_recipeFragment_to_recipeCreateFragment)
                         disableBtmNav()
                     }
                 }

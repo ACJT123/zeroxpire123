@@ -465,7 +465,7 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
         setFragmentResult("requestName", bundleOf("name" to goal.goalName))
         setFragmentResult(
             "requestDate", bundleOf(
-                "date" to SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(goal.targetCompletionDate)
+                "date" to SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(goal.targetCompletionDate)
             )
         )
         setFragmentResult("requestId", bundleOf("id" to goal.goalId))

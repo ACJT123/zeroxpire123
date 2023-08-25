@@ -148,7 +148,7 @@ Last updated: [Date]\n
         <item>Goal</item>
         <item>Is it expired?</item>
     </string-array>
-
+    <string name="url_read_username">user/getUsername.php</string>
 
     <string name="recipe_instructions">Recipe instructions</string>
     <string name="step_1">Step 1:</string>
@@ -165,10 +165,36 @@ Last updated: [Date]\n
     <string name="recipe_title_hint">Type recipe title here</string>
     <string name="create_recipe_top_bar">Create recipe</string>
     <string name="select_ingredient">Select an ingredient</string>
-    <string name="recipeSearchURL">/recipe/searchByTitle.php</string>
+    <string name="recipeSearchURL">/recipe/search.php</string>
     <string name="recipeCreateURL">/recipe/create.php</string>
     <string name="recipeGetRecommendURL">recipe/getRecommend.php</string>
     <string name="recipeGetRecipeByIDURL">/recipe/getRecipeByID.php</string>
-    <string name="url_read_username">user/getUsername.php</string>
+    <string name="recipeUpdateRecipeURL">/recipe/update.php</string>
+    <string name="recipeDeleteRecipeURL">/recipe/delete.php</string>
+    <string name="bookmarkGetBookmarksByUserID">/recipe/getBookmarksByUserID.php</string>
+    <string name="bookmarkRemoveFromBookmarks">/recipe/removeFromBookmarks.php</string>
+    <string name="bookmarkAddToBookmark">/recipe/addToBookmark.php</string>
+    <string name="commentCreateURL">/comment/create.php</string>
+    <string name="commentGetCommentsByRecipeIDURL">/comment/getCommentsByRecipeID.php</string>
+    <string name="search_on_google">There are no recipes that match your search\nSearch on Google?</string>
+    <string name="select_ingredients">Select ingredients</string>
+    <string name="selected_ingredients">Ingredients:</string>
+    <string name="author">author: %1$s</string>
+    <string name="recipe_details">Recipe Details</string>
+    <string name="comment">Comment</string>
+    <string name="like">like</string>
+    <string name="likes_counter">likes counter</string>
+    <string name="likes_count">0</string>
+    <string name="reviews">Reviews</string>
+    <string name="reply_to_user">reply to user</string>
+    <string name="date">date</string>
+    <string name="date_format">dd MMM yyyy HH:mm</string>
+    <string name="up_button">up</string>
+    <string name="edit">edit</string>
+    <string name="print">print</string>
+    <string name="close_button">close button</string>
+    <string name="send">Send</string>
+    <string name="bookmarks">Bookmarks</string>
+    <string name="no_comments">No comments found</string>
 
 </resources>

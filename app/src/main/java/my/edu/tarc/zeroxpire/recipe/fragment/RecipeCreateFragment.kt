@@ -1,10 +1,15 @@
-package my.edu.tarc.zeroxpire.createRecipe
+package my.edu.tarc.zeroxpire.recipe.fragment
 
+import android.app.Activity
+import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
 import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -26,10 +31,15 @@ import com.android.volley.DefaultRetryPolicy
 import com.android.volley.Request
 import com.android.volley.toolbox.JsonObjectRequest
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.UploadTask
 import com.google.firebase.storage.ktx.storageMetadata
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import my.edu.tarc.zeroxpire.R
 import my.edu.tarc.zeroxpire.WebDB
 import my.edu.tarc.zeroxpire.adapters.IngredientAdapter
@@ -37,16 +47,14 @@ import my.edu.tarc.zeroxpire.ingredient.IngredientClickListener
 import my.edu.tarc.zeroxpire.model.Ingredient
 import my.edu.tarc.zeroxpire.viewmodel.GoalViewModel
 import my.edu.tarc.zeroxpire.viewmodel.IngredientViewModel
-import org.json.JSONArray
-import org.json.JSONObject
 import java.io.File
 import java.net.UnknownHostException
 import java.util.*
-import kotlin.collections.ArrayList
 
 
-class CreateRecipe : Fragment(), IngredientClickListener {
+class RecipeCreateFragment : Fragment(), IngredientClickListener {
     // declaration
+
     private lateinit var recipeImgImageView : ImageView
     private lateinit var addIngredientImageView : ImageView
     private lateinit var addInstructionImageView: ImageView
@@ -58,21 +66,17 @@ class CreateRecipe : Fragment(), IngredientClickListener {
     private lateinit var createRecipeUpBtnImageView: ImageView
     private lateinit var img : Drawable
 
-    private lateinit var spinnerAdapter: ArrayAdapter<String>
     private val instructionStepsArrayList = ArrayList<TextView>()
     private val instructionDetailsArrayList = ArrayList<EditText>()
     private val instructionDetailsLinearLayoutArrayList = ArrayList<LinearLayout>()
     private var numInstructions = 0
 
     private var firebaseStorageReference = FirebaseStorage.getInstance("gs://zeroxpire.appspot.com/").reference
-    private var firebaseDatabase: FirebaseDatabase? = FirebaseDatabase.getInstance("https://zeroxpire-default-rtdb.asia-southeast1.firebasedatabase.app/")
-    private var recipesDatabaseReference: DatabaseReference? = firebaseDatabase!!.getReference("Recipes")
-    private var numRecipes : Long = -1
+    private lateinit var auth: FirebaseAuth
 
     private lateinit var currentView : View
 
-    private val ingredientIDArrayList = ArrayList<Int>()
-    private val ingredientNameArrayList = ArrayList<String>()
+    private val ingredientsCheckBoxArrayList = ArrayList<CheckBox>()
 
     private lateinit var bottomSheetDialog: BottomSheetDialog
     private lateinit var bottomSheetView: View
@@ -80,13 +84,14 @@ class CreateRecipe : Fragment(), IngredientClickListener {
     private val goalViewModel : GoalViewModel by activityViewModels()
     private var selectedIngredientsTemporary: MutableList<Ingredient> = mutableListOf()
     private var selectedIngredients: MutableList<Ingredient> = mutableListOf()
-    private lateinit var bottomSheetIngredientAdapter: IngredientAdapter
     private var getFromStoredIngredients: MutableList<Ingredient> = mutableListOf()
-    private lateinit var selectedIngredientAdapter: IngredientAdapter
     private val ingredientViewModel: IngredientViewModel by activityViewModels()
+    private lateinit var selectedIngredientAdapter: IngredientAdapter
+    private lateinit var bottomSheetIngredientAdapter: IngredientAdapter
 
-    //TODO: change to get userid
-    private var userID: Int = 1
+    private lateinit var fileUri: Uri
+
+    private lateinit var userID : String
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreateView(
@@ -94,12 +99,19 @@ class CreateRecipe : Fragment(), IngredientClickListener {
         savedInstanceState: Bundle?
     ): View {
         // Inflate the layout for this fragment
-        currentView = inflater.inflate(R.layout.fragment_create_recipe, container, false)
+        currentView = inflater.inflate(R.layout.fragment_recipe_create, container, false)
+        auth = FirebaseAuth.getInstance()
+
+        selectedIngredientAdapter = IngredientAdapter(object : IngredientClickListener {
+            override fun onIngredientClick(ingredient: Ingredient) {
+                // Do nothing here, as this is a dummy click listener
+            }
+        }, goalViewModel)
+
+        userID = auth.currentUser?.uid.toString()
 
         // instantiation
-        spinnerAdapter = loadIngredient()
-        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-
+        fileUri = Uri.EMPTY
         bottomSheetIngredientAdapter = IngredientAdapter(this, goalViewModel)
 
         createRecipeUpBtnImageView = currentView.findViewById(R.id.createRecipeUpBtnImageView)
@@ -109,7 +121,7 @@ class CreateRecipe : Fragment(), IngredientClickListener {
         addIngredientImageView = currentView.findViewById(R.id.addIngredientImageView)
         addInstructionImageView = currentView.findViewById(R.id.addInstructionImageView)
         createRecipeImageView = currentView.findViewById(R.id.createRecipeImageView)
-
+ 
         ingredientsLinearLayout = currentView.findViewById(R.id.ingredientsLinearLayout)
         instructionsLinearLayout = currentView.findViewById(R.id.instructionsLinearLayout)
 
@@ -120,21 +132,11 @@ class CreateRecipe : Fragment(), IngredientClickListener {
             Log.d("Stored ingredients", getFromStoredIngredients.toString())
         }
 
-
-        //get number of recipes that exist in the database
-        recipesDatabaseReference!!.child("numRecipes").addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                numRecipes = snapshot.value as Long
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                numRecipes = -1
-            }
-        })
-
         //choose image
         recipeImgImageView.setOnClickListener {
-            //TODO: get image from gallery or camera
+            val intent = Intent(Intent.ACTION_GET_CONTENT)
+            intent.type = "image/*"
+            startActivityForResult(intent, 1)
         }
 
         addIngredientImageView.setOnClickListener {
@@ -168,15 +170,21 @@ class CreateRecipe : Fragment(), IngredientClickListener {
 
         createRecipeImageView.setOnClickListener {
             //get title
-            val title = recipeTitleEditText.text.toString()
-            if (title.isBlank()){
-                Toast.makeText(currentView.context, "Please give the recipe a name", Toast.LENGTH_SHORT).show()
+            if (fileUri == Uri.EMPTY) {
+                Toast.makeText(currentView.context, "Add an image for the recipe", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            //TODO: if no ingredients are selected, display error msg
+            val title = recipeTitleEditText.text.toString()
+            if (title.isBlank()){
+                Toast.makeText(currentView.context, "Give the recipe a name", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
 
-            //TODO: get ingredients id
+            if (selectedIngredients.isEmpty()) {
+                Toast.makeText(currentView.context, "Select some ingredients", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
 
             //create array with instruction text
             val instructionsArray : Array<String> = Array(instructionDetailsArrayList.size) {
@@ -184,29 +192,29 @@ class CreateRecipe : Fragment(), IngredientClickListener {
             }
 
             //create text file with ingredients at temp.txt
-            val pathString = "recipe instructions/${recipeTitleEditText.text}.txt"
-            val instructionsUploadTask = storeToFireBase(instructionsArray, pathString)
+            val instructionsPathString = "recipeInstructions/${recipeTitleEditText.text}.txt"
+            val instructionsUploadTask = storeTxtToFireBase(instructionsArray, instructionsPathString)
+
+            val imagePathString = "recipeImage/${recipeTitleEditText.text}.jpg"
+            val imageUploadTask = storeImageToFireBase(imagePathString)
 
             instructionsUploadTask.addOnSuccessListener {
-                firebaseStorageReference.child(pathString).downloadUrl.addOnSuccessListener {downloadUrl ->
-                    val accessToken = downloadUrl.toString()
-                    val tokenLength = 36
-                    val passedAccessToken =
-                        java.lang.StringBuilder()
-                            .append(title)
-                            .append(".txt?alt=media%26token=")
-                            .append(accessToken.substring(accessToken.length-tokenLength, accessToken.length))
-                            .toString()
+                firebaseStorageReference.child(instructionsPathString).downloadUrl.addOnSuccessListener {instructionsDownloadUrl ->
+                    imageUploadTask.addOnSuccessListener {
+                        firebaseStorageReference.child(imagePathString).downloadUrl.addOnSuccessListener { imageDownloadUrl ->
+                            val instructionsAccessToken = cleanedAccessToken(instructionsDownloadUrl.toString(), title, "txt")
 
-                    //get note
-                    var note = noteEditText.text.toString()
-                    if (note.isBlank()){
-                        note = ""
-                    }
+                            val imageAccessToken = cleanedAccessToken(imageDownloadUrl.toString(), title, "jpg")
 
-                    //upload to webHost when everything is ready
-                    instructionsUploadTask.addOnCompleteListener{
-                        storeRecipeToDatabase(title, passedAccessToken,note)
+                            //get note
+                            var note = noteEditText.text.toString()
+                            if (note.isBlank()){
+                                note = ""
+                            }
+
+                            //upload to webHost when everything is ready
+                            storeRecipeToDatabase(title, instructionsAccessToken, imageAccessToken, note)
+                        }
                     }
                 }
             }
@@ -219,7 +227,7 @@ class CreateRecipe : Fragment(), IngredientClickListener {
         return currentView
     }
 
-    private fun storeToFireBase(
+    private fun storeTxtToFireBase(
         array: Array<String>,
         pathString: String
     ): UploadTask {
@@ -234,51 +242,26 @@ class CreateRecipe : Fragment(), IngredientClickListener {
         val byte = File(view!!.context.filesDir, "temp.txt").readBytes()
         val metadata = storageMetadata {
             contentType = "text/plain"
-
         }
 
         //store to firebase
         return storageRef.putBytes(byte, metadata)
     }
 
-    private fun loadIngredient(): ArrayAdapter<String> {
-        val url: String = getString(R.string.url_server) + getString(R.string.url_read_ingredient)
-        ingredientNameArrayList.add(getString(R.string.select_ingredient))
-        val jsonObjectRequest = JsonObjectRequest(
-            Request.Method.GET, url, null,
-            { response ->
-                try {
-                    if (response != null) {
-                        val strResponse = response.toString()
-                        val jsonResponse = JSONObject(strResponse)
-                        val jsonArray: JSONArray = jsonResponse.getJSONArray("records")
-                        val size: Int = jsonArray.length()
+    private fun storeImageToFireBase(
+        pathString: String
+    ): UploadTask {
+        val storageRef = firebaseStorageReference.child(pathString)
+        var uploadTask: UploadTask
 
-                        for (i in 0 until size) {
-                            val jsonIngredient: JSONObject = jsonArray.getJSONObject(i)
-                            Log.d("JSON", jsonIngredient.toString())
-                            ingredientNameArrayList.add(jsonIngredient.getString("ingredientName"))
-                            ingredientIDArrayList.add(jsonIngredient.getInt("ingredientId"))
-                        }
-                    }
-                } catch (e: UnknownHostException) {
-                    Log.d("CreateRecipe", "Unknown Host: ${e.message}")
-                } catch (e: Exception) {
-                    Log.d("CreateRecipe", "Response: ${e.message}")
-                }
-            },
-            { error ->
-                Log.d("CreateRecipe", "Error Response: ${error.message}")
-            }
-        )
-        jsonObjectRequest.retryPolicy = DefaultRetryPolicy(
-            DefaultRetryPolicy.DEFAULT_TIMEOUT_MS,
-            0,
-            1f
-        )
-        WebDB.getInstance(requireActivity()).addToRequestQueue(jsonObjectRequest)
-        return ArrayAdapter(currentView.context, android.R.layout.simple_spinner_item, ingredientNameArrayList)
+        fileUri.let {uri ->
+            uploadTask = storageRef.putFile(uri)
+        }
+
+        //store to firebase
+        return uploadTask
     }
+
 
     private fun createNewTextView(text: String): TextView {
         val newTextView = TextView(currentView.context)
@@ -306,7 +289,7 @@ class CreateRecipe : Fragment(), IngredientClickListener {
         return newEditText
     }
 
-    private fun createNewLinearLayout(left: Int, right: Int, top: Int, bottom: Int): LinearLayout {
+    private fun createNewLinearLayout(left: Int = 0, right: Int = 0, top: Int = 0, bottom: Int = 0): LinearLayout {
         val newLinearLayout = LinearLayout(currentView.context, null, R.style.RecipeDetails)
 
         //apply attributes
@@ -321,14 +304,14 @@ class CreateRecipe : Fragment(), IngredientClickListener {
         return newLinearLayout
     }
 
-    private fun storeRecipeToDatabase(title: String, instructionsLink: String, note: String) {
+    private fun storeRecipeToDatabase(title: String, instructionsLink: String, imageLink: String, note: String) {
         //create string including the arguments
         //to create ingredients array
         val ingredients = StringBuilder()
-        for (i in 0..1){
-            ingredients.append("&ingredientIDArr[]=")
-            ingredients.append(i+1)
+        selectedIngredients.forEach {
+            ingredients.append("&ingredientIDArr[]=${it.ingredientId}")
         }
+
         val url = StringBuilder()
             .append(getString(R.string.url_server))
             .append(getString(R.string.recipeCreateURL))
@@ -336,6 +319,8 @@ class CreateRecipe : Fragment(), IngredientClickListener {
             .append(title)
             .append("&instructionsLink=")
             .append(instructionsLink)
+            .append("&imageLink=")
+            .append(imageLink)
             .append("&note=")
             .append(note)
             .append("&author=")
@@ -351,6 +336,7 @@ class CreateRecipe : Fragment(), IngredientClickListener {
                         //get response
                         if (response.getBoolean("success")) {
                             Toast.makeText(currentView.context, "Successfully uploaded recipe", Toast.LENGTH_SHORT).show()
+                            findNavController().popBackStack()
                         }
                         else {
                             Toast.makeText(currentView.context, "Failed to upload recipe", Toast.LENGTH_SHORT).show()
@@ -364,6 +350,7 @@ class CreateRecipe : Fragment(), IngredientClickListener {
                 }
             },
             { error ->
+                Toast.makeText(currentView.context, "Failed to upload recipe, please try again later", Toast.LENGTH_SHORT).show()
                 Log.d("FK", "Error Response: ${error.message}")
             }
         )
@@ -400,16 +387,14 @@ class CreateRecipe : Fragment(), IngredientClickListener {
                 Log.d("minus",getFromStoredIngredients.minus(selectedIngredients.toSet()).toString())
 
             }
-//            if(selectedIngredients.isNotEmpty()){
-//                Log.d("Selected is not empty", selectedIngredients.size.toString())
-//                binding.noIngredientHasRecordedLayout.visibility = View.INVISIBLE
-//                binding.numOfSelectedIngredientsTextView.text = "Total: ${selectedIngredients.size} ingredient"
-//            }
-//            else {
-//                Log.d("Selected is empty", selectedIngredients.size.toString())
-//                binding.noIngredientHasRecordedLayout.visibility = View.VISIBLE
-//                binding.numOfSelectedIngredientsTextView.visibility = View.INVISIBLE
-//            }
+            if(selectedIngredients.isNotEmpty()){
+                Log.d("Selected is not empty", selectedIngredients.size.toString())
+                displayIngredients()
+            }
+            else {
+                Log.d("Selected is empty", selectedIngredients.size.toString())
+
+            }
         }
 
 
@@ -472,6 +457,58 @@ class CreateRecipe : Fragment(), IngredientClickListener {
         Log.d("SelectedIngredients", selectedIngredientsTemporary.toString())
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 1 && resultCode == Activity.RESULT_OK) {
+            fileUri = data?.data!!
+            try {
+                val bitmap: Bitmap =
+                    MediaStore.Images.Media.getBitmap(requireActivity().contentResolver, fileUri)
+                recipeImgImageView.setImageBitmap(bitmap)
+                recipeImgImageView.setPadding(0, 0, 0, 0)
+                recipeImgImageView.scaleType = ImageView.ScaleType.CENTER_CROP
+            } catch (e: java.lang.Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private fun cleanedAccessToken(accessToken: String, title: String, fileType: String): String {
+        val tokenLength = 36
+        return java.lang.StringBuilder()
+            .append(title)
+            .append(".$fileType?alt=media%26token=")
+            .append(accessToken.substring(accessToken.length-tokenLength, accessToken.length))
+            .toString()
+    }
+
+    private fun displayIngredients() {
+        val recipeDetailsIngredientsLinearLayout = currentView.findViewById<LinearLayout>(R.id.ingredientsLinearLayout)
+        CoroutineScope(Dispatchers.IO).launch {
+            withContext(Dispatchers.Main) {
+                selectedIngredients.forEach {
+                    val layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+                    layoutParams.setMargins(80, 0, 80, 0)
+                    val newCheckBox = createNewCheckBox(it.ingredientName, layoutParams=layoutParams)
+                    ingredientsCheckBoxArrayList.add(newCheckBox)
+                    recipeDetailsIngredientsLinearLayout.addView(newCheckBox)
+                }
+            }
+        }
+    }
+
+    private fun createNewCheckBox(text: String = "", typeface: Int = Typeface.NORMAL, layoutParams: LayoutParams): CheckBox {
+        val newCheckBox = CheckBox(currentView.context)
+
+        //apply attributes
+        newCheckBox.text = text
+        newCheckBox.textSize = 24F
+        newCheckBox.setTypeface(null, typeface)
+        newCheckBox.isVisible = true
+        newCheckBox.layoutParams = layoutParams
+
+        return newCheckBox
+    }
 
 }
 
