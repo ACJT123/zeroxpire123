@@ -64,7 +64,7 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
 
     private var ingredientWithGoalId: MutableList<Ingredient> = mutableListOf()
     private var ingredientWithGoalIdNeedToBeCleared: MutableList<Ingredient> = mutableListOf()
-    private var getIngredientWithGoalIdFromDB: MutableList<Ingredient> = mutableListOf()
+    private var finalSelectionList: MutableList<Ingredient> = mutableListOf()
     private var getIngredientWithoutGoalIdFromDB: MutableList<Ingredient> = mutableListOf()
     private var selectedIngredients: MutableList<Ingredient> = mutableListOf()
 
@@ -106,7 +106,7 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
 
         //clear selections
         ingredientWithGoalIdNeedToBeCleared.clear()
-        getIngredientWithGoalIdFromDB.clear()
+        finalSelectionList.clear()
         getIngredientWithoutGoalIdFromDB.clear()
         selectedIngredients.clear()
         ingredientWithGoalId.clear()
@@ -127,7 +127,7 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
                 getIngredientWithoutGoalIdFromDB = ingredients as MutableList<Ingredient>
                 bottomSheetIngredientAdapter.setIngredient(getIngredientWithoutGoalIdFromDB)
                 for(ingredient in ingredients){
-                    Log.d("getIngredientWithoutGoalId", ingredient.ingredientName)
+                    Log.d("GoalDetailFragment: getIngredientWithoutGoalId", ingredient.ingredientName)
                 }
             })
 
@@ -142,33 +142,20 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
             findNavController().navigateUp()
         }
         saveBtn.setOnClickListener {
-            if(getIngredientWithGoalIdFromDB.isEmpty()){
-                clearGoalIdForIngredient(goalId!!)
-                val builder = AlertDialog.Builder(requireContext())
-                builder.setMessage("The goal must have at least 1 ingredient, or you want delete this goal instead?").setCancelable(false)
-                    .setPositiveButton("Delete") { dialog, id ->
-                        deleteGoal()
-
-                    }.setNegativeButton("Cancel") { dialog, id ->
-                        dialog.dismiss()
-                        adapter.notifyDataSetChanged()
-                    }
-                val alert = builder.create()
-                alert.show()
+            if(finalSelectionList.isEmpty()){
+                deleteGoal("The goal must have at least 1 ingredient, or you want delete this goal instead?")
             }
             else{
                 updateGoal()
             }
         }
         deleteBtn.setOnClickListener {
-            deleteGoal()
+            deleteGoal("Are you sure want to delete this goal?")
         }
 
 
         //swipe to delete from the existing ingredient list
         swipeToDeleteExistingIngredientList()
-
-
     }
 
     private fun setFragmentResultsFunctions(){
@@ -196,15 +183,14 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
                         //set recyclerview with the ingredients which associated with the goalId
                         adapter.setIngredient(ingredients)
 
-                        getIngredientWithGoalIdFromDB = ingredients as MutableList<Ingredient>
-                        ingredientWithGoalId = getIngredientWithGoalIdFromDB
+                        finalSelectionList = ingredients as MutableList<Ingredient>
+                        ingredientWithGoalId = finalSelectionList
 
-                        Log.d("ingredientWithGoalId", ingredients.toString())
-                        Log.d("getIngredientWithGoalIdFromDB", getIngredientWithGoalIdFromDB.toString())
+                        Log.d("GoalDetailFragment: ingredientWithGoalId", ingredients.toString())
+                        Log.d("GoalDetailFragment: finalSelectionList", finalSelectionList.toString())
                     })
             }
         }
-
     }
 
     private fun showBottomSheetDialog() {
@@ -242,9 +228,9 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
                     }
                 }
 
-                //getIngredientWithGoalIdFromDB + selectedIngredients
+                //finalSelectionList + selectedIngredients
                 //existing list + selected list
-                getIngredientWithGoalIdFromDB.addAll(selectedIngredients)
+                finalSelectionList.addAll(selectedIngredients)
 
                 //remove all selections from the selected ingredients
                 getIngredientWithoutGoalIdFromDB.removeAll(selectedIngredients)
@@ -303,11 +289,12 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
         datePickerDialog.show()
     }
 
-    private fun deleteGoal() {
+    private fun deleteGoal(msg: String) {
         val builder = AlertDialog.Builder(requireContext())
-        builder.setMessage("Are you sure you want to delete?")
+        builder.setMessage(msg)
             .setCancelable(false)
             .setPositiveButton("Delete") { _, _ ->
+                clearGoalIdForIngredient(goalId!!)
                 val url = getString(R.string.url_server) + getString(R.string.url_delete_goal) + "?goalId=" + goalId
                 val jsonObjectRequest = JsonObjectRequest(
                     Request.Method.POST, url, null,
@@ -359,86 +346,81 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
 
         //updateGoalDetails()
 
-
-        val urlClear =
-            getString(R.string.url_server) + getString(R.string.url_clearGoalIdForIngredient_goal) +
-                    "?goalId=" + goalId
-        Log.d("ingredientWithGoalIdNeedToBeCleared", ingredientWithGoalIdNeedToBeCleared.toString())
-        if (ingredientWithGoalIdNeedToBeCleared.size > 0) {
-            val jsonObjectRequest = JsonObjectRequest(
-                Request.Method.POST, urlClear, null,
-                { response ->
-                    try {
-                        if (response != null) {
-                            val strResponse = response.toString()
-                            val jsonResponse = JSONObject(strResponse)
-                            val success: String = jsonResponse.get("success").toString()
-
-                            if (success == "1") {
-
-                            } else {
-                                //toast(requireContext(), "Failed to update.")
-                            }
-                        }
-                    } catch (e: java.lang.Exception) {
-                        Log.d("ClearGoalId", "Response: %s".format(e.message.toString()))
-                    }
-                },
-                { error ->
-                    // Handle error response, if required
-                    Log.d("ClearGoalId", "Error Response: ${error.message}")
-                }
-            )
-            jsonObjectRequest.retryPolicy =
-                DefaultRetryPolicy(DefaultRetryPolicy.DEFAULT_TIMEOUT_MS, 0, 1f)
-            WebDB.getInstance(requireContext()).addToRequestQueue(jsonObjectRequest)
-        }
-
-        val ingredientIds =
-            getIngredientWithGoalIdFromDB.joinToString("&ingredientIDArr[]=") { it.ingredientId.toString() }
-        for (ingredient in getIngredientWithGoalIdFromDB) {
-            Log.d("ingredientWithGoalIdFromDBUpdate", ingredient.ingredientName)
-        }
-        val url =
-            getString(R.string.url_server) + getString(R.string.url_updateGoalIdForIngredient_goal) +
-                    "?goalId=" + goalId + "&ingredientIDArr[]=$ingredientIds"
-
-        Log.d("updateURLLLLLLLLLLL", url.toString())
-
-        val jsonObjectRequest = JsonObjectRequest(
-            Request.Method.POST, url, null,
+        val urlClear = getString(R.string.url_server) + getString(R.string.url_clearGoalIdForIngredient_goal) + "?goalId=" + goalId
+        val jsonObjectRequestClear = JsonObjectRequest(
+            Request.Method.POST, urlClear, null,
             { response ->
                 try {
-                    if (response != null) {
+                    if(response!=null){
                         val strResponse = response.toString()
                         val jsonResponse = JSONObject(strResponse)
                         val success: String = jsonResponse.get("success").toString()
 
                         if (success == "1") {
+                            val ingredientIds =
+                                finalSelectionList.joinToString("&ingredientIDArr[]=") { it.ingredientId.toString() }
+                            for (ingredient in finalSelectionList) {
+                                Log.d("GoalDetailFragment: ingredientWithGoalIdFromDBUpdate", ingredient.ingredientName)
+                            }
+                            val url =
+                                getString(R.string.url_server) + getString(R.string.url_updateGoalIdForIngredient_goal) +
+                                        "?goalId=" + goalId + "&ingredientIDArr[]=$ingredientIds"
+
+                            Log.d("GoalDetailFragment: updateURLLLLLLLLLLL", url.toString())
+
+                            val jsonObjectRequest = JsonObjectRequest(
+                                Request.Method.POST, url, null,
+                                { response ->
+                                    try {
+                                        if (response != null) {
+                                            val strResponse = response.toString()
+                                            val jsonResponse = JSONObject(strResponse)
+                                            val success: String = jsonResponse.get("success").toString()
+
+                                            if (success == "1") {
+
+                                            } else {
+                                                //toast(requireContext(), "Failed to update.")
+                                            }
+                                        }
+                                    } catch (e: java.lang.Exception) {
+                                        Log.d("UpdateGoal", "Response: %s".format(e.message.toString()))
+                                    }
+                                },
+                                { error ->
+                                    // Handle error response, if required
+                                    Log.d("UpdateGoal", "Error Response: ${error.message}")
+                                }
+                            )
+                            jsonObjectRequest.retryPolicy =
+                                DefaultRetryPolicy(DefaultRetryPolicy.DEFAULT_TIMEOUT_MS, 0, 1f)
+                            WebDB.getInstance(requireContext()).addToRequestQueue(jsonObjectRequest)
+//        }
+
+                            progressDialog?.dismiss()
+                            Toast.makeText(requireContext(), "Goal detail is updated successfully.", Toast.LENGTH_SHORT)
+                                .show()
+                            findNavController().navigateUp()
+                            findNavController().clearBackStack(R.id.goalFragment)
 
                         } else {
-                            //toast(requireContext(), "Failed to update.")
+                            toast(requireContext(), "Failed to delete.")
                         }
                     }
-                } catch (e: java.lang.Exception) {
-                    Log.d("UpdateGoal", "Response: %s".format(e.message.toString()))
+                }
+                catch (e: java.lang.Exception) {
+                    Log.d("Delete", "Response: %s".format(e.message.toString()))
                 }
             },
             { error ->
                 // Handle error response, if required
-                Log.d("UpdateGoal", "Error Response: ${error.message}")
+                Log.d("Delete", "Error Response: ${error.message}")
             }
         )
-        jsonObjectRequest.retryPolicy =
-            DefaultRetryPolicy(DefaultRetryPolicy.DEFAULT_TIMEOUT_MS, 0, 1f)
-        WebDB.getInstance(requireContext()).addToRequestQueue(jsonObjectRequest)
-//        }
+        jsonObjectRequestClear.retryPolicy = DefaultRetryPolicy(DefaultRetryPolicy.DEFAULT_TIMEOUT_MS, 0, 1f)
+        WebDB.getInstance(requireContext()).addToRequestQueue(jsonObjectRequestClear)
 
-        progressDialog?.dismiss()
-        Toast.makeText(requireContext(), "Goal detail is updated successfully.", Toast.LENGTH_SHORT)
-            .show()
-        findNavController().navigateUp()
-        findNavController().clearBackStack(R.id.goalFragment)
+
     }
 
     private fun updateGoalDetails() {
@@ -498,27 +480,34 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
                 val builder = AlertDialog.Builder(requireContext())
                 builder.setMessage("Remove this ingredient from this goal?").setCancelable(false)
                     .setPositiveButton("Remove") { dialog, id ->
-                        Log.d("ingredientSizeLeft", getIngredientWithGoalIdFromDB.size.toString())
-                            val position = viewHolder.adapterPosition
+                        Log.d("ingredientSizeLeft", finalSelectionList.size.toString())
+                        val position = viewHolder.adapterPosition
 
-                            val ingredientToRemove = adapter.getIngredientAt(position)
+                        val ingredientToRemove = adapter.getIngredientAt(position)
 
-                            // Add the ingredient to be removed to the ingredientWithGoalIdNeedToBeCleared list
-                            if (ingredientToRemove in ingredientWithGoalId) {
-                                ingredientWithGoalIdNeedToBeCleared.add(ingredientToRemove)
-                            }
+                        // Add the ingredient to be removed to the ingredientWithGoalIdNeedToBeCleared list
+                        if (ingredientToRemove in ingredientWithGoalId) {
+                            ingredientWithGoalIdNeedToBeCleared.add(ingredientToRemove)
+                        }
 
-                            // Remove the ingredient from the lists
-                            getIngredientWithGoalIdFromDB.remove(ingredientToRemove)
-                            getIngredientWithoutGoalIdFromDB.add(ingredientToRemove)
+                        // Remove the ingredient from the lists
+                        finalSelectionList.remove(ingredientToRemove)
+                        getIngredientWithoutGoalIdFromDB.add(ingredientToRemove)
 
-                            bottomSheetIngredientAdapter.notifyItemRemoved(position)
-                            adapter.notifyItemRemoved(position)
+                        bottomSheetIngredientAdapter.notifyItemRemoved(position)
+                        adapter.notifyItemRemoved(position)
 
-                            // Clear selections
-                            selectedIngredients.clear()
+                        // Clear selections
+                        selectedIngredients.clear()
 
-                            dialog.dismiss()
+                        dialog.dismiss()
+
+                        Log.d("GoalDetailFragment: finalSelectionList", finalSelectionList.size.toString())
+                        if (finalSelectionList.isEmpty()) {
+                            binding.emptyIngredientImageView.visibility = View.VISIBLE
+                        } else {
+                            binding.emptyIngredientImageView.visibility = View.GONE
+                        }
 
                     }.setNegativeButton("Cancel") { dialog, id ->
                         dialog.dismiss()
@@ -526,6 +515,8 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
                     }
                 val alert = builder.create()
                 alert.show()
+
+
             }
 
 
@@ -556,34 +547,7 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
     }
 
     private fun clearGoalIdForIngredient(goalId: Int) {
-        val url = getString(R.string.url_server) + getString(R.string.url_clearGoalIdForIngredient_goal) + "?goalId=" + goalId
-        val jsonObjectRequest = JsonObjectRequest(
-            Request.Method.POST, url, null,
-            { response ->
-                try {
-                    if(response!=null){
-                        val strResponse = response.toString()
-                        val jsonResponse = JSONObject(strResponse)
-                        val success: String = jsonResponse.get("success").toString()
 
-                        if (success == "1") {
-                            toast(requireContext(), "Goal is deleted successfully.")
-                        } else {
-                            toast(requireContext(), "Failed to delete.")
-                        }
-                    }
-                }
-                catch (e: java.lang.Exception) {
-                    Log.d("Delete", "Response: %s".format(e.message.toString()))
-                }
-            },
-            { error ->
-                // Handle error response, if required
-                Log.d("Delete", "Error Response: ${error.message}")
-            }
-        )
-        jsonObjectRequest.retryPolicy = DefaultRetryPolicy(DefaultRetryPolicy.DEFAULT_TIMEOUT_MS, 0, 1f)
-        WebDB.getInstance(requireContext()).addToRequestQueue(jsonObjectRequest)
     }
 
 
@@ -638,7 +602,7 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
             "${selectedIngredients.size} ingredient selected."
         }
 
-        Log.d("SelectedIngredients", selectedIngredients.toString())
+        Log.d("GoalDetailFragment: SelectedIngredients", selectedIngredients.toString())
     }
 
     private fun formatDateToStringFromLong(dateLong: Long?): String {

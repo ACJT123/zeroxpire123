@@ -102,14 +102,29 @@
 
             </androidx.constraintlayout.widget.ConstraintLayout>
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:layout_marginStart="20dp"
-                android:layout_marginEnd="20dp"
-                android:id="@+id/ingredientsInGoal"
-                android:layout_width="match_parent"
-                android:layout_height="150dp"
-                android:scrollbars="vertical"
-                tools:listitem="@layout/card_view_design" />
+            <RelativeLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:layout_marginStart="20dp"
+                    android:layout_marginEnd="20dp"
+                    android:id="@+id/ingredientsInGoal"
+                    android:layout_width="match_parent"
+                    android:layout_height="150dp"
+                    android:scrollbars="vertical"
+                    tools:listitem="@layout/card_view_design" />
+
+                <ImageView
+                    android:id="@+id/emptyIngredientImageView"
+                    android:visibility="gone"
+                    android:layout_width="100dp"
+                    android:layout_height="100dp"
+                    android:layout_centerInParent="true"
+                    android:background="@drawable/empty_fridge"/>
+
+            </RelativeLayout>
+
 
             <Button
                 android:id="@+id/addIngredientsBtn"
