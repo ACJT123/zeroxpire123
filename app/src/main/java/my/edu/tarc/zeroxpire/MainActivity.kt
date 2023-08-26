@@ -2,17 +2,12 @@ package my.edu.tarc.zeroxpire
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.Activity
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.ProgressDialog
+import android.app.*
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.graphics.Color
-import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -27,8 +22,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.os.bundleOf
 import androidx.lifecycle.ViewModelProvider
@@ -42,9 +35,6 @@ import androidx.work.*
 import com.android.volley.DefaultRetryPolicy
 import com.android.volley.Request
 import com.android.volley.toolbox.JsonObjectRequest
-import com.bumptech.glide.Glide
-import com.bumptech.glide.request.target.CustomTarget
-import com.bumptech.glide.request.transition.Transition
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.card.MaterialCardView
@@ -53,24 +43,18 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
-import koleton.api.hideSkeleton
-import koleton.api.loadSkeleton
 import my.edu.tarc.zeroxpire.adapters.IngredientAdapter
 import my.edu.tarc.zeroxpire.adapters.RecognitionResultsAdapterDate
 import my.edu.tarc.zeroxpire.adapters.RecognitionResultsAdapterName
 import my.edu.tarc.zeroxpire.databinding.ActivityMainBinding
 import my.edu.tarc.zeroxpire.ingredient.IngredientClickListener
 import my.edu.tarc.zeroxpire.model.Ingredient
-import my.edu.tarc.zeroxpire.view.ingredient.IngredientWorker
 import my.edu.tarc.zeroxpire.viewmodel.GoalViewModel
 import my.edu.tarc.zeroxpire.viewmodel.IngredientViewModel
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.UnknownHostException
 import java.text.SimpleDateFormat
-import java.time.LocalDate
-import java.time.ZoneId
-import java.time.temporal.ChronoUnit
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -93,11 +77,6 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
 
     private val selectedRecognizedName: MutableList<String> = mutableListOf()
 
-    val CHANNEL_ID = "channelID"
-    val CHANNEL_NAME = "channelName"
-    val NOTIF_ID = 0
-
-
     //text recog
     private var imageUri: Uri? = null
     private var imageIngredientNameUri: Uri? = null
@@ -117,24 +96,12 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
 
     private var isManualOptionChosen = false
 
+    // Define a variable to keep track of the count
+    private val nearlyExpiredIngredients: MutableList<Ingredient> = mutableListOf()
+
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-
-        val workManager = WorkManager.getInstance(applicationContext)
-        val repeatInterval = 1L // Set the desired repeat interval in hours
-
-        val workRequest = PeriodicWorkRequest.Builder(
-            IngredientWorker::class.java,
-            repeatInterval, TimeUnit.HOURS
-        ).build()
-
-        workManager.enqueueUniquePeriodicWork(
-            "ingredient_work",
-            ExistingPeriodicWorkPolicy.KEEP,
-            workRequest
-        )
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -162,7 +129,7 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
             )
         }
 
-        createNotifChannel()
+//        createNotificationChannel()
 
         ingredientViewModel = ViewModelProvider(this)[IngredientViewModel::class.java]
 
@@ -191,7 +158,6 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
         disableBtmNav()
 
         if (auth.currentUser != null) {
-            scheduleIngredientWorker() // Schedule the worker here
             navController.navigate(R.id.ingredientFragment)
             navController.clearBackStack(R.id.ingredientFragment)
             loadIngredient()
@@ -226,8 +192,6 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
                             isManualOptionChosen = true // Set the flag to true when manual option is chosen
                             navController.navigate(R.id.action_ingredientFragment_to_addIngredientFragment)
                         }
-
-
 
 
                         bottomSheetDialog.setOnDismissListener {
@@ -596,39 +560,6 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
 
         return formattedDates
     }
-
-    private fun scheduleIngredientWorker() {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED) // Set network requirements if needed
-            .build()
-
-        val periodicWorkRequest = PeriodicWorkRequest.Builder(
-            IngredientWorker::class.java,
-            1, // Set the repeat interval
-            TimeUnit.DAYS
-        )
-            .setConstraints(constraints)
-            .build()
-
-        WorkManager.getInstance(this).enqueue(periodicWorkRequest)
-    }
-
-
-    private fun createNotifChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID, CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_DEFAULT
-            ).apply {
-                lightColor = Color.GREEN
-                enableLights(true)
-
-            }
-            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
-        }
-    }
-
     private fun disableBtmNav() {
         binding.bottomAppBar.visibility = View.INVISIBLE
         binding.fab.visibility = View.INVISIBLE
@@ -685,6 +616,7 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
         Log.d("Ingredients", selectedIngredients.toString())
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun loadIngredient() {
         progressDialog = ProgressDialog(this)
         progressDialog?.setMessage("Loading...")
@@ -754,6 +686,7 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
                                             userId
                                         )
                                     }
+                                    checkExpiryAndNotify(ingredient)
                                     ingredientViewModel.addIngredient(ingredient)
                                     Log.d("IngredientCategory", ingredient.ingredientCategory)
                                 }
@@ -786,5 +719,78 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
 
         WebDB.getInstance(this).addToRequestQueue(jsonObjectRequest)
     }
+
+    // Inside your checkExpiryAndNotify function
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun checkExpiryAndNotify(ingredient: Ingredient) {
+        val today = Calendar.getInstance()
+        val expiry = Calendar.getInstance()
+        expiry.timeInMillis = ingredient.expiryDate.time
+
+        val daysDifference = TimeUnit.MILLISECONDS.toDays(expiry.timeInMillis - today.timeInMillis)
+
+        // Customize the threshold for when to notify
+        val notificationThresholdDays = 3
+
+        if (daysDifference in 1..notificationThresholdDays) {
+            // Schedule a notification
+            nearlyExpiredIngredients.add(ingredient)
+            createNotificationChannel()
+            scheduleNotification()
+
+            // Also, you might want to add some logic here to prevent scheduling the same notification multiple times
+        }
+    }
+
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun createNotificationChannel() {
+        // Create a notification channel
+        val channelName = "Notif Channel"
+        val channelDescription = "Description"
+        val importance = NotificationManager.IMPORTANCE_DEFAULT
+        val channel = NotificationChannel(channelID, channelName, importance)
+        channel.description = channelDescription
+
+        // Get the NotificationManager and create the channel
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(channel)
+    }
+
+    private fun scheduleNotification() {
+        val intent = Intent(applicationContext, my.edu.tarc.zeroxpire.Notification::class.java)
+        intent.putExtra("countExtra", nearlyExpiredIngredients.size) // Add count as an extra
+
+        val ingredientNames = ArrayList<String>() // Create a list to store ingredient names
+        for (ingredient in nearlyExpiredIngredients) {
+            ingredientNames.add(ingredient.ingredientName) // Add each ingredient name to the list
+        }
+        intent.putStringArrayListExtra("ingredientNames", ingredientNames) // Pass the list as an extra
+
+        // Create a pending intent with the broadcast intent
+        val pendingIntent = PendingIntent.getBroadcast(
+            applicationContext,
+            notificationID,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        // Get the AlarmManager to schedule the notification
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        // Calculate the time to trigger the notification (1 millisecond from current time)
+        val time = Calendar.getInstance().timeInMillis + 1
+
+        // Schedule the notification with the AlarmManager
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            time,
+            pendingIntent
+        )
+    }
+
+
+
+
 
 }

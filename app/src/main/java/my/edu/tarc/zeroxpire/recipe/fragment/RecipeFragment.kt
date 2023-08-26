@@ -1,5 +1,6 @@
 package my.edu.tarc.zeroxpire.recipe.fragment
 
+import android.app.AlertDialog
 import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
@@ -13,6 +14,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.SearchView
 import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat
 import androidx.core.view.isGone
 import androidx.fragment.app.Fragment
@@ -180,6 +182,7 @@ class RecipeFragment : Fragment(), IngredientClickListener {
 
         return currentView
     }
+
 
 
 

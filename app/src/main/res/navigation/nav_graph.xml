@@ -75,6 +75,9 @@
             app:popEnterAnim="@anim/nav_default_pop_enter_anim"
             app:popExitAnim="@anim/nav_default_pop_exit_anim"
             app:popUpTo="@id/recipeFragment" />
+        <action
+            android:id="@+id/action_recipeFragment_to_ingredientFragment"
+            app:destination="@id/ingredientFragment" />
     </fragment>
     <fragment
         android:id="@+id/termsAndConditionsFragment"
