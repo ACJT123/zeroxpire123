@@ -367,7 +367,7 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
                 calendar.set(year, month, dayOfMonth, 0, 0, 0)
                 selectedDate = calendar.time
                 val selectedDateString =
-                    SimpleDateFormat("d/M/yyyy", Locale.getDefault()).format(selectedDate)
+                    SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(selectedDate)
                 binding.chooseTargetCompletionDate.setText(selectedDateString)
             },
             year,

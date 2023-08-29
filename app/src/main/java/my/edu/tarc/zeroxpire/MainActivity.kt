@@ -199,7 +199,6 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
                                 enableBtmNav() // Re-enable the bottom navigation view when the bottom sheet is dismissed
                             }
                         }
-
                     }
                 }
                 R.id.goalFragment -> {
@@ -220,6 +219,39 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
                     }
                 }
                 R.id.profileFragment -> {
+                    enableBtmNav()
+                    binding.fab.setImageResource(R.drawable.barcode_scan_icon_137911)
+                    binding.fab.setOnClickListener {
+                        bottomSheetDialog = BottomSheetDialog(this)
+                        bottomSheetView = layoutInflater.inflate(
+                            R.layout.bottom_sheet_add_ingredient_option,
+                            null
+                        )
+                        bottomSheetDialog.setContentView(bottomSheetView)
+                        bottomSheetDialog.show()
+                        val scanner = bottomSheetView.findViewById<MaterialCardView>(R.id.scannerOption)
+                        val manual = bottomSheetView.findViewById<MaterialCardView>(R.id.manualOption)
+
+                        scanner.setOnClickListener {
+                            byRecognition()
+                            bottomSheetDialog.dismiss()
+                            disableBtmNav()
+                        }
+
+                        manual.setOnClickListener {
+                            bottomSheetDialog.dismiss()
+                            disableBtmNav() // Disable the bottom navigation view when manual option is chosen
+                            isManualOptionChosen = true // Set the flag to true when manual option is chosen
+                            navController.navigate(R.id.action_profileFragment_to_addIngredientFragment)
+                        }
+
+
+                        bottomSheetDialog.setOnDismissListener {
+                            if (!isManualOptionChosen) {
+                                enableBtmNav() // Re-enable the bottom navigation view when the bottom sheet is dismissed
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -629,6 +661,7 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
             { response ->
                 try {
                     if (response != null) {
+
                         val strResponse = response.toString()
                         val jsonResponse = JSONObject(strResponse)
                         val jsonArray: JSONArray = jsonResponse.getJSONArray("records")
@@ -694,20 +727,21 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
                         }
 
                         // Dismiss the progress dialog when finished loading ingredients
-                        progressDialog?.dismiss()
+                        progressDialog.dismiss()
+
                     }
                 } catch (e: UnknownHostException) {
                     Log.d("ContactRepository", "Unknown Host: ${e.message}")
-                    progressDialog?.dismiss()
+
                 } catch (e: Exception) {
                     Log.d("Cannot load", "Response: ${e.message}")
-                    progressDialog?.dismiss()
+
                 }
             },
             { error ->
                 //i think is when there is nothing to return then it will return 404
                 ingredientViewModel.deleteAllIngredients()
-                progressDialog?.dismiss()
+
             }
         )
 
@@ -718,6 +752,9 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
         )
 
         WebDB.getInstance(this).addToRequestQueue(jsonObjectRequest)
+
+        progressDialog.dismiss()
+
     }
 
     // Inside your checkExpiryAndNotify function
@@ -742,7 +779,7 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
         }
     }
 
-
+    
     @RequiresApi(Build.VERSION_CODES.O)
     private fun createNotificationChannel() {
         // Create a notification channel

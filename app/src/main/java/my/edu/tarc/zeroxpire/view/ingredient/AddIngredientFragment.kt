@@ -135,24 +135,6 @@ class AddIngredientFragment : Fragment() {
             .centerCrop()
             .into(binding.ingredientImage)
 
-//        setFragmentResultListener("requestName") { _, bundle ->
-//            val result = bundle.getString("name")
-//            binding.enterIngredientName.setText("$result")
-//        }
-//
-//        setFragmentResultListener("requestCategory") { _, bundle ->
-//            val result = bundle.getString("category")
-//            binding.chooseCategory.setText("$result")
-//        }
-//
-//        setFragmentResultListener("requestImage") { _, bundle ->
-//            val result = bundle.getString("image")
-//            Glide.with(requireContext())
-//                .load(result)
-//                .centerCrop()
-//                .into(binding.ingredientImage)
-//        }
-
         binding.chooseExpiryDate.setOnClickListener {
             showDatePickerDialog()
         }
@@ -208,12 +190,6 @@ class AddIngredientFragment : Fragment() {
         }
     }
 
-    private fun convertBitmapToByteArray(bitmap: Bitmap): ByteArray {
-        val outputStream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
-        return outputStream.toByteArray()
-    }
-
     private fun showDatePickerDialog() {
         val currentDate = Calendar.getInstance()
         val year = currentDate.get(Calendar.YEAR)
@@ -253,7 +229,8 @@ class AddIngredientFragment : Fragment() {
             // Get the current date
             val currentDate = Date()
 
-            val encodedIngredientName = URLEncoder.encode(ingredientName, "UTF-8")
+
+            val encodedIngredientName = URLEncoder.encode(ingredientName + auth.currentUser?.uid, "UTF-8")
 
             val storage = Firebase.storage("gs://zeroxpire.appspot.com")
             val imageRef = storage.reference.child("ingredientImage/${encodedIngredientName}.jpg")

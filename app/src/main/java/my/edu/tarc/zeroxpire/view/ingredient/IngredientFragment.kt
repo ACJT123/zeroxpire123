@@ -8,7 +8,6 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.icu.util.Calendar
-import android.media.MicrophoneInfo.Coordinate3F
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -18,7 +17,6 @@ import android.view.ViewGroup
 import android.widget.*
 import androidx.activity.OnBackPressedCallback
 import androidx.annotation.RequiresApi
-import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -101,6 +99,11 @@ class IngredientFragment : Fragment(), IngredientClickListener {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+
+
+        val mainActivity = activity as? MainActivity
+        mainActivity?.loadIngredient()
+
         binding.sortBtn.setBackgroundResource(R.drawable.baseline_sort_24)
 
         val user = Firebase.auth.currentUser
@@ -130,17 +133,22 @@ class IngredientFragment : Fragment(), IngredientClickListener {
 
         val adapter = IngredientAdapter(this, goalViewModel)
 
-        loadIngredient(adapter)
+        //loadIngredient(adapter)
 
         createNotificationChannel()
+
+
+
+        ingredientViewModel.ingredientList.observe(viewLifecycleOwner, Observer { ingredients ->
+            logg("ingredients: $ingredients")
+            adapter.setIngredient(ingredients)
+            reminder(ingredients)
+        })
 
         binding.recyclerview.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerview.adapter = adapter
 
-        ingredientViewModel.ingredientList.observe(viewLifecycleOwner, Observer { ingredients ->
-            adapter.setIngredient(ingredients)
-            reminder(ingredients)
-        })
+        binding.recyclerview.visibility = View.VISIBLE
 
         sortIngredient(adapter)
 
@@ -427,12 +435,11 @@ class IngredientFragment : Fragment(), IngredientClickListener {
 
 
 
-    private fun loadIngredient(adapter: IngredientAdapter) {
-//        progressDialog = ProgressDialog(requireContext())
-//        progressDialog?.setMessage("Loading...")
-//        progressDialog?.setCancelable(false)
-//        progressDialog?.show()
-        binding.recyclerview.loadSkeleton()
+    fun loadIngredient(adapter: IngredientAdapter?) {
+        progressDialog = ProgressDialog(requireContext())
+        progressDialog?.setMessage("Loading...")
+        progressDialog?.setCancelable(false)
+        progressDialog?.show()
         val url: String = getString(R.string.url_server) + getString(R.string.url_read_ingredient) + "?userId=${auth.currentUser?.uid}"
         Log.d("uid", auth.currentUser?.uid.toString())
         val jsonObjectRequest = JsonObjectRequest(
@@ -505,14 +512,7 @@ class IngredientFragment : Fragment(), IngredientClickListener {
 
                         // Dismiss the progress dialog when finished loading ingredients
                         progressDialog?.dismiss()
-                        binding.recyclerview.hideSkeleton()
-                        binding.sortBtn.visibility = View.VISIBLE
-                        binding.allIngredientsTextView.visibility = View.VISIBLE
-                        binding.recyclerview.visibility = View.VISIBLE
-                        binding.emptyHereContent.visibility = View.GONE
-                        binding.ingredientSearchView.visibility = View.VISIBLE
-                        binding.labels.visibility = View.VISIBLE
-                        binding.notFoundText.visibility = View.INVISIBLE
+
                     }
                 } catch (e: UnknownHostException) {
                     Log.d("ContactRepository", "Unknown Host: ${e.message}")
@@ -541,6 +541,30 @@ class IngredientFragment : Fragment(), IngredientClickListener {
         )
 
         WebDB.getInstance(requireActivity()).addToRequestQueue(jsonObjectRequest)
+
+    }
+
+    private fun uiInitialization(size: Int?) {
+        logg("ingredientListSize: $size")
+
+//        if (ingredientList!! > 0) {
+//            binding.sortBtn.visibility = View.VISIBLE
+//            binding.allIngredientsTextView.visibility = View.VISIBLE
+//            binding.recyclerview.visibility = View.VISIBLE
+//            binding.emptyHereContent.visibility = View.GONE
+//            binding.ingredientSearchView.visibility = View.VISIBLE
+//            binding.labels.visibility = View.VISIBLE
+//            binding.notFoundText.visibility = View.INVISIBLE
+//        }
+//        else{
+//            binding.sortBtn.visibility = View.GONE
+//            binding.allIngredientsTextView.visibility = View.GONE
+//            binding.recyclerview.visibility = View.GONE
+//            binding.emptyHereContent.visibility = View.VISIBLE
+//            binding.ingredientSearchView.visibility = View.GONE
+//            binding.labels.visibility = View.GONE
+//            binding.notFoundText.visibility = View.GONE
+//        }
     }
     private fun searchIngredient(adapter: IngredientAdapter) {
         binding.ingredientSearchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
@@ -613,40 +637,80 @@ class IngredientFragment : Fragment(), IngredientClickListener {
             }
 
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, position: Int) {
+                val goalName = checkDependency(viewHolder.adapterPosition, adapter)
                 val builder = AlertDialog.Builder(requireContext())
-                builder.setMessage("Are you sure you want to Delete?").setCancelable(false)
-                    .setPositiveButton("Delete") { dialog, id ->
-                        progressDialog = ProgressDialog(requireContext())
-                        progressDialog?.setMessage("Deleting...")
-                        progressDialog?.setCancelable(false)
-                        progressDialog?.show()
-                        val position = viewHolder.adapterPosition
-                        val deletedIngredient = adapter.getIngredientAt(position)
-                        ingredientViewModel.deleteIngredient(deletedIngredient)
-                        val url = getString(R.string.url_server) + getString(R.string.url_delete_ingredient) + "?ingredientId=" + deletedIngredient.ingredientId
-                        Log.d("id:::::::::::::", deletedIngredient.ingredientId.toString())
-                        val jsonObjectRequest = JsonObjectRequest(Request.Method.POST, url, null,
-                            { response ->
-                                // Handle successful deletion response, if required
-                                progressDialog?.dismiss()
+                if(goalName.isEmpty()){
+                    builder.setMessage("Are you sure you want to Delete?").setCancelable(false)
+                        .setPositiveButton("Delete") { dialog, id ->
+                            progressDialog = ProgressDialog(requireContext())
+                            progressDialog?.setMessage("Deleting...")
+                            progressDialog?.setCancelable(false)
+                            progressDialog?.show()
+                            val position = viewHolder.adapterPosition
+                            val deletedIngredient = adapter.getIngredientAt(position)
+                            ingredientViewModel.deleteIngredient(deletedIngredient)
+                            val url = getString(R.string.url_server) + getString(R.string.url_delete_ingredient) + "?ingredientId=" + deletedIngredient.ingredientId
+                            Log.d("id:::::::::::::", deletedIngredient.ingredientId.toString())
+                            val jsonObjectRequest = JsonObjectRequest(Request.Method.POST, url, null,
+                                { response ->
+                                    // Handle successful deletion response, if required
+                                    progressDialog?.dismiss()
 
-                                toast("Ingredient deleted.")
-                                val mainActivity = activity as? MainActivity
-                                mainActivity?.loadIngredient()
-                            },
-                            { error ->
-                                // Handle error response, if required
-                                Log.d("FK", "Error Response: ${error.message}")
-                            }
-                        )
+                                    toast("Ingredient deleted.")
+                                },
+                                { error ->
+                                    // Handle error response, if required
+                                    Log.d("FK", "Error Response: ${error.message}")
+                                }
+                            )
 
-                        requestQueue.add(jsonObjectRequest)
-                    }.setNegativeButton("Cancel") { dialog, id ->
-                        adapter.notifyDataSetChanged()
-                        dialog.dismiss()
-                    }
-                val alert = builder.create()
-                alert.show()
+                            requestQueue.add(jsonObjectRequest)
+                        }.setNegativeButton("Cancel") { dialog, id ->
+                            adapter.notifyDataSetChanged()
+                            dialog.dismiss()
+                        }
+                    val alert = builder.create()
+                    alert.show()
+                }
+                else{
+                    builder.setMessage("This ingredient is currently in the goal \"$goalName\". " +
+                            "\n\nDeleting this ingredient will also delete goal \"$goalName\"." +
+                    "\n\n Are you sure want to delete?").setCancelable(false)
+                        .setPositiveButton("Delete") { dialog, id ->
+                            progressDialog = ProgressDialog(requireContext())
+                            progressDialog?.setMessage("Deleting goal \"$goalName\"...")
+                            progressDialog?.setCancelable(false)
+                            progressDialog?.show()
+                            val position = viewHolder.adapterPosition
+                            val deletedIngredient = adapter.getIngredientAt(position)
+                            //ingredientViewModel.deleteIngredient(deletedIngredient)
+
+                            val urlDeleteGoal = getString(R.string.url_server) + getString(R.string.url_delete_goal) + "?goalId=" + deletedIngredient.ingredientGoalId
+                            val jsonObjectRequestDeleteGoal = JsonObjectRequest(Request.Method.POST, urlDeleteGoal, null,
+                                { response ->
+                                    // Handle successful deletion response, if required
+//                                Toast.makeText(requireContext(), "Goal is deleted successfully.", Toast.LENGTH_SHORT).show()
+
+                                    clearGoalIdForIngredient(deletedIngredient)
+                                    adapter.notifyDataSetChanged()
+                                },
+                                { error ->
+                                    // Handle error response, if required
+                                    Log.d("Errorrrrrr", "Error Response: ${error.message}")
+                                }
+                            )
+                            requestQueue.add(jsonObjectRequestDeleteGoal)
+
+
+                        }.setNegativeButton("Cancel") { dialog, id ->
+                            adapter.notifyDataSetChanged()
+                            dialog.dismiss()
+                        }
+                    val alert = builder.create()
+                    alert.show()
+                }
+
+
             }
 
             override fun onChildDraw(
@@ -674,6 +738,58 @@ class IngredientFragment : Fragment(), IngredientClickListener {
         itemTouchHelper.attachToRecyclerView(binding.recyclerview)
     }
 
+    private fun clearGoalIdForIngredient(ingredient: Ingredient) {
+        progressDialog?.setMessage("Deleting ingredient \"${ingredient.ingredientName}\"...")
+        progressDialog?.setCancelable(false)
+        val url = getString(R.string.url_server) + getString(R.string.url_clearGoalIdForIngredient_goal) + "?goalId=" + ingredient.ingredientGoalId
+        val jsonObjectRequest = JsonObjectRequest(Request.Method.POST, url, null,
+            { response ->
+
+                val url = getString(R.string.url_server) + getString(R.string.url_delete_ingredient) + "?ingredientId=" + ingredient.ingredientId
+                val jsonObjectRequest = JsonObjectRequest(Request.Method.POST, url, null,
+                    { response ->
+                        // Handle successful deletion response, if required
+
+                        progressDialog!!.dismiss()
+                        toast("Ingredient and goal has deleted successfully.")
+
+
+
+                    },
+                    { error ->
+                        // Handle error response, if required
+                        Log.d("FK", "Error Response: ${error.message}")
+                    }
+                )
+
+                requestQueue.add(jsonObjectRequest)
+            },
+            { error ->
+                // Handle error response, if required
+                Log.d("FK", "Error Response: ${error.message}")
+            }
+        )
+        requestQueue.add(jsonObjectRequest)
+    }
+
+
+    private fun checkDependency(position: Int, adapter: IngredientAdapter): String {
+        logg("position: $position")
+        goalViewModel.goalList.value?.map {
+            if(adapter.getIngredientAt(position).ingredientGoalId == it.goalId){
+                logg("Comparison: ${adapter.getIngredientAt(position).ingredientGoalId} == ${it.goalId}")
+                return it.goalName
+            }
+
+        }
+        return ""
+
+    }
+
+    private fun logg(msg: String){
+        Log.d("IngredientFragment", msg)
+    }
+
     override fun onIngredientClick(ingredient: Ingredient) {
         findNavController().navigate(R.id.action_ingredientFragment_to_ingredientDetailFragment)
 
@@ -681,7 +797,7 @@ class IngredientFragment : Fragment(), IngredientClickListener {
         setFragmentResult("requestName", bundleOf("name" to ingredient.ingredientName))
         setFragmentResult(
             "requestDate", bundleOf(
-                "date" to SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(ingredient.expiryDate)
+                "date" to SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(ingredient.expiryDate)
             )
         )
         setFragmentResult("requestId", bundleOf("id" to ingredient.ingredientId))

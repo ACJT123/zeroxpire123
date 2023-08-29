@@ -78,7 +78,7 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val mainActivity = activity as? MainActivity
-        mainActivity?.loadIngredient()
+        //mainActivity?.loadIngredient()
         auth = FirebaseAuth.getInstance()
 
         pieChart = binding.pieChart

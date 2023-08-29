@@ -45,6 +45,9 @@
         <action
             android:id="@+id/action_profileFragment_to_scannerFragment"
             app:destination="@id/scannerFragment" />
+        <action
+            android:id="@+id/action_profileFragment_to_addIngredientFragment"
+            app:destination="@id/addIngredientFragment" />
     </fragment>
     <fragment
         android:id="@+id/recipeFragment"

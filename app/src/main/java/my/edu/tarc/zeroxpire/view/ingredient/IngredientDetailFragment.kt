@@ -1,9 +1,11 @@
 package my.edu.tarc.zeroxpire.view.ingredient
 
+import android.app.Activity
 import android.app.AlertDialog
 import android.app.DatePickerDialog
-import android.content.Context
+import android.app.ProgressDialog
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -15,6 +17,7 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.ImageView
 import android.widget.Toast
+import androidx.core.net.toUri
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.setFragmentResultListener
@@ -23,38 +26,54 @@ import com.android.volley.DefaultRetryPolicy
 import com.android.volley.Request
 import com.android.volley.RequestQueue
 import com.android.volley.toolbox.JsonObjectRequest
-import com.android.volley.toolbox.Volley
 import com.bumptech.glide.Glide
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.ktx.Firebase
+import com.google.firebase.storage.ktx.storage
+import my.edu.tarc.zeroxpire.MainActivity
 import my.edu.tarc.zeroxpire.R
 import my.edu.tarc.zeroxpire.WebDB
 import my.edu.tarc.zeroxpire.databinding.FragmentIngredientDetailBinding
 import my.edu.tarc.zeroxpire.viewmodel.IngredientViewModel
 import org.json.JSONObject
+import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.math.exp
+import kotlin.math.log
 
 class IngredientDetailFragment : Fragment() {
     private lateinit var binding: FragmentIngredientDetailBinding
 
+    private lateinit var auth: FirebaseAuth
     private var selectedDate: Long? = null // Variable to store the selected date as a Long value
 
     private val ingredientViewModel: IngredientViewModel by activityViewModels()
 
     private var ingredientId: Int = 0
     private var originalName: String? = null
+    private var originalSelectedDate: Long? = null
+    private var originalImage: Uri? = null
 
     private lateinit var requestQueue: RequestQueue
+
+    private var imageFile: Uri? = null
+
+    private var progressDialog: ProgressDialog? = null
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
         binding = FragmentIngredientDetailBinding.inflate(inflater, container, false)
-        requestQueue = Volley.newRequestQueue(requireContext())
+        auth = FirebaseAuth.getInstance()
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+
+        val context = requireContext()
 
         // Set fragment result listeners to receive data from other fragments
         setFragmentResultListener("requestName") { _, bundle ->
@@ -66,12 +85,25 @@ class IngredientDetailFragment : Fragment() {
         setFragmentResultListener("requestDate") { _, bundle ->
             val dateString = bundle.getString("date")
             selectedDate = parseDateStringToLong(dateString)
+            originalSelectedDate = parseDateStringToLong(dateString)
             binding.chooseExpiryDate.setText(dateString)
         }
 
         setFragmentResultListener("requestCategory") { _, bundle ->
-            val result = bundle.getString("category")
-            binding.chooseCategory.setText("$result")
+            val selectedCategory = bundle.getString("category")
+
+            // Find the position of the selected category in the list
+            val ingredientCategories = resources.getStringArray(R.array.ingredient_categories)
+            val categoryPosition = ingredientCategories.indexOf(selectedCategory)
+
+            // Set the selected category's position in the AutoCompleteTextView
+            val adapter = ArrayAdapter(requireContext(), R.layout.category_list, ingredientCategories)
+            binding.chooseCategory.setAdapter(adapter)
+
+            //TODO
+            //binding.chooseCategory.setSelection(categoryPosition)
+
+            Log.d("IngredientDetailFragment", "Selected category position: $categoryPosition")
         }
 
 
@@ -80,7 +112,7 @@ class IngredientDetailFragment : Fragment() {
             ingredientId = id
         }
 
-        setFragmentResultListener("") { _, bundle ->
+        setFragmentResultListener("requestName") { _, bundle ->
             val result = bundle.getString("name")
             originalName = result
             binding.enterIngredientName.setText(originalName)
@@ -90,6 +122,7 @@ class IngredientDetailFragment : Fragment() {
         binding.ingredientImage.scaleType = ImageView.ScaleType.CENTER_CROP
         setFragmentResultListener("requestImage") { _, bundle ->
             val imageUri = bundle.getString("image")
+            originalImage = imageUri?.toUri()
             Glide.with(requireContext())
                 .load(imageUri)
                 .centerCrop()
@@ -136,70 +169,91 @@ class IngredientDetailFragment : Fragment() {
         }
 
         binding.saveBtn.setOnClickListener {
+            progressDialog = ProgressDialog(requireContext())
+            progressDialog?.setMessage("Updating...")
+            progressDialog?.setCancelable(false)
+            progressDialog?.show()
             val newName = binding.enterIngredientName.text.toString()
             val newDate = selectedDate
-            val expiryDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val newExpiryDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                 .format(newDate)
 
-            if (newName.isNotEmpty()) {
-                if (newName != originalName) {
-                    //ingredientViewModel.updateIngredientName(ingredientId, newName)
-                    val url = getString(R.string.url_server) + getString(R.string.url_update_ingredient) +"?ingredientName=" + newName +
-                            "&expiryDate=" + expiryDate + "&ingredientId=" + ingredientId
-                    Log.d("ingredientID", ingredientId.toString())
-                    Log.d("ingredientName", newName)
-                    Log.d("expiryDate", expiryDate)
-                    val jsonObjectRequest = JsonObjectRequest(
-                        Request.Method.POST, url, null,
-                        { response ->
-                            try {
-                                if(response!=null){
-                                    val strResponse = response.toString()
-                                    val jsonResponse = JSONObject(strResponse)
-                                    val success: String = jsonResponse.get("success").toString()
+            if(newName.isNotEmpty()){
+//                if(checkUpdate(newName, newDate, fileUri)){
+                //todo: only workable if change all 3 fields
 
-                                    if (success == "1") {
-                                        toast(requireContext(), "Ingredient is updated successfully.")
-                                    } else {
-                                        toast(requireContext(), "Failed to update.")
+                        val storage = Firebase.storage("gs://zeroxpire.appspot.com")
+                        val encodedIngredientImage = URLEncoder.encode(
+                            originalName + auth.currentUser?.uid,
+                            "UTF-8"
+                        )
+                        val imageRef = storage.reference.child("ingredientImage/${encodedIngredientImage}.jpg")
+                        Log.d("imageRef", imageRef.toString())
+                        imageFile?.let{uri->
+                            //delete current one
+                            imageRef.delete().addOnSuccessListener {
+                                val newIngredientImage = URLEncoder.encode(
+                                    newName + auth.currentUser?.uid,
+                                    "UTF-8"
+                                )
+                                val newImageRef = storage.reference.child("ingredientImage/${newIngredientImage}.jpg")
+                                newImageRef.putFile(uri).addOnSuccessListener{
+                                    newImageRef.downloadUrl.addOnSuccessListener { downloadedUri ->
+                                        logg("downloadedUri: $downloadedUri")
+                                        val imageUrl = downloadedUri.toString()
+                                        storeIngredientToDB(newName, newExpiryDate, imageUrl)
                                     }
                                 }
+                            }.addOnFailureListener {
+                                logg("cannot delete")
                             }
-                            catch (e: java.lang.Exception) {
-                                Log.d("Update", "Response: %s".format(e.message.toString()))
-                            }
-                        },
-                        { error ->
-                            // Handle error response, if required
-                            Log.d("Update", "Error Response: ${error.message}")
                         }
-                    )
-                    jsonObjectRequest.retryPolicy = DefaultRetryPolicy(DefaultRetryPolicy.DEFAULT_TIMEOUT_MS, 0, 1f)
-                    WebDB.getInstance(requireContext()).addToRequestQueue(jsonObjectRequest)
-                } else {
-                    toast(requireContext(),"No changes made to the ingredient name.")
                 }
-            } else {
+//            }
+            else{
                 binding.enterIngredientName.error = "Please enter the ingredient's name"
                 binding.enterIngredientName.requestFocus()
             }
 
-//            if (newDate != null) {
-//                ingredientViewModel.updateExpiryDate(ingredientId, newDate)
-//                val dateString = formatDateToStringFromLong(newDate)
-//                toast("Expiry date updated successfully! New date: $dateString")
-//            } else {
-//                toast("No expiry date selected.")
-//            }
-            findNavController().navigateUp()
+            progressDialog!!.dismiss()
+            findNavController().popBackStack()
+
+
         }
 
         binding.deleteBtn.setOnClickListener {
             showDeleteConfirmationDialog()
         }
 
+        binding.ingredientImage.setPadding(0, 0, 0, 0)
+        binding.ingredientImage.scaleType = ImageView.ScaleType.CENTER_CROP
+        imageFile = arguments?.getParcelable<Uri>("ingredientImage")
+        Log.d("ingredientImage!!", imageFile.toString())
+        Glide.with(requireContext())
+            .load(imageFile)
+            .centerCrop()
+            .into(binding.ingredientImage)
+
         binding.ingredientImage.setOnClickListener {
-            openImagePicker()
+            val intent = Intent(Intent.ACTION_GET_CONTENT)
+            intent.type = "image/*"
+            startActivityForResult(intent, 1)
+        }
+    }
+
+    private fun checkUpdate(newName: String, newExpiryDate: Long?, fileUri: Uri?): Boolean {
+
+        return newName != originalName || newExpiryDate != originalSelectedDate || fileUri != originalImage
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 1 && resultCode == Activity.RESULT_OK && data != null) {
+            imageFile = data.data
+            Glide.with(requireContext())
+                .load(imageFile)
+                .centerCrop()
+                .into(binding.ingredientImage)
         }
     }
 
@@ -219,6 +273,45 @@ class IngredientDetailFragment : Fragment() {
             binding.chooseCategory.showDropDown()
         }
     }
+
+    private fun storeIngredientToDB(newName: String, newDate: String, imageUrl: String) {
+        val url = "https:/zeroxpire.000webhostapp.com/api/ingredient/update.php" +"?ingredientName=" + newName +
+                "&expiryDate=" + newDate+ "&ingredientImage=" + URLEncoder.encode(
+            imageUrl.substringAfterLast("%2F"), "UTF-8") +
+                "&ingredientId=" + ingredientId
+        logg("newImageUrl: $url")
+
+        val jsonObjectRequest = JsonObjectRequest(
+            Request.Method.POST, url, null,
+            { response ->
+                try {
+                    if(response!=null){
+                        val strResponse = response.toString()
+                        val jsonResponse = JSONObject(strResponse)
+                        val success: String = jsonResponse.get("success").toString()
+
+                        if (success == "1") {
+                            logg("Ingredient is updated successfully.")
+
+                        } else {
+                            logg("Failed to update.")
+                        }
+                    }
+                }
+                catch (e: java.lang.Exception) {
+                    Log.d("Update", "Response: %s".format(e.message.toString()))
+                }
+            },
+            { error ->
+                // Handle error response, if required
+                Log.d("Update", "Error Response: ${error.message}")
+            }
+        )
+        jsonObjectRequest.retryPolicy = DefaultRetryPolicy(DefaultRetryPolicy.DEFAULT_TIMEOUT_MS, 0, 1f)
+        WebDB.getInstance(binding.root.context).addToRequestQueue(jsonObjectRequest)
+
+    }
+
 
     private fun showDatePickerDialog() {
         val calendar = Calendar.getInstance()
@@ -276,9 +369,9 @@ class IngredientDetailFragment : Fragment() {
                                 val success: String = jsonResponse.get("success").toString()
 
                                 if (success == "1") {
-                                    toast(requireContext(), "Ingredient is deleted successfully.")
+                                    Toast.makeText(requireContext(), "Ingredient is deleted successfully.", Toast.LENGTH_SHORT).show()
                                 } else {
-                                    toast(requireContext(), "Failed to delete.")
+                                    Toast.makeText(requireContext(), "Fail to delete.", Toast.LENGTH_SHORT).show()
                                 }
                             }
                         }
@@ -302,13 +395,6 @@ class IngredientDetailFragment : Fragment() {
         alert.show()
     }
 
-    private fun openImagePicker() {
-        val intent = Intent()
-        intent.action = Intent.ACTION_GET_CONTENT
-        intent.type = "image/*"
-        startActivityForResult(intent, 1)
-    }
-
     private fun parseDateStringToLong(dateString: String?): Long? {
         return try {
             val format = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
@@ -319,6 +405,7 @@ class IngredientDetailFragment : Fragment() {
         }
     }
 
+
     private fun formatDateToStringFromLong(dateLong: Long?): String {
         return if (dateLong != null) {
             val format = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
@@ -328,10 +415,8 @@ class IngredientDetailFragment : Fragment() {
         }
     }
 
-    private fun toast(context: Context?, msg: String) {
-        context?.let {
-            Toast.makeText(it, msg, Toast.LENGTH_SHORT).show()
-        }
-    }
 
+    private fun logg(msg:String){
+        Log.d("ingredientDetailFragment", msg)
+    }
 }

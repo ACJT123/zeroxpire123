@@ -124,23 +124,10 @@ Last updated: [Date]\n
         <item>Vegetables</item>
         <item>Fruits</item>
         <item>Meat</item>
-        <item>Seafood</item>
-        <item>Dairy</item>
-        <item>Grains</item>
-        <item>Herbs</item>
-        <item>Oils</item>
-        <item>Nuts &amp; Seeds</item>
-        <item>Legumes</item>
-        <item>Condiments &amp; Sauces</item>
-        <item>Sweeteners &amp; Sweet Products</item>
-        <item>Beverages</item>
-        <item>Baked Goods</item>
+        <item>Seafood</item>>
+        <item>Sauces</item>
         <item>Canned &amp; Preserved Foods</item>
-        <item>Frozen Foods</item>
-        <item>Snacks &amp; Sweets</item>
-        <item>Breakfast Foods</item>
-        <item>Eggs &amp; Egg Products</item>
-        <item>Pasta &amp; Noodles</item>
+        <item>Eggs Products</item>
     </string-array>
     <string-array name="filter_options">
         <item>Type</item>
