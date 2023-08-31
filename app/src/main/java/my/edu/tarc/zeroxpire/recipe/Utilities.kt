@@ -1,5 +1,6 @@
 package my.edu.tarc.zeroxpire.recipe
 
+import android.content.res.ColorStateList
 import android.graphics.Typeface
 import android.view.Gravity
 import android.view.View
@@ -9,8 +10,15 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.LinearLayout.LayoutParams
 import android.widget.TextView
+import androidx.appcompat.content.res.AppCompatResources
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.core.view.setPadding
+import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.RecyclerView
+import my.edu.tarc.zeroxpire.R
+import java.util.*
+import kotlin.collections.ArrayList
 
 class Utilities {
 
@@ -41,13 +49,17 @@ class Utilities {
         text: String = "",
         typeface: Int = Typeface.NORMAL
     ): CheckBox {
-        val newCheckBox = CheckBox(view.context)
+        val newCheckBox = CheckBox(view.context, null, R.style.CheckBox)
 
         //apply attributes
         newCheckBox.text = text
-        newCheckBox.textSize = 24F
+        newCheckBox.textSize = 16F
         newCheckBox.setTypeface(null, typeface)
+        newCheckBox.buttonDrawable = AppCompatResources.getDrawable(view.context, R.drawable.baseline_check_box_outline_blank_24)
+        newCheckBox.gravity = Gravity.CENTER_VERTICAL
         newCheckBox.isVisible = true
+        newCheckBox.buttonTintList = ColorStateList.valueOf(
+            ContextCompat.getColor(view.context, R.color.btnColor))
 
         return newCheckBox
     }
@@ -59,8 +71,8 @@ class Utilities {
         newEditText.gravity = Gravity.START or Gravity.TOP
         newEditText.hint = hint
         newEditText.isSingleLine = false
-        newEditText.imeOptions = EditorInfo.TYPE_TEXT_FLAG_IME_MULTI_LINE
-        newEditText.textSize = 24F
+        newEditText.imeOptions = EditorInfo.IME_ACTION_NEXT
+        newEditText.textSize = 16F
         newEditText.setText(text)
 
         val layoutParams = LayoutParams(
@@ -78,7 +90,7 @@ class Utilities {
         view: View,
         text: String = "",
         typeface: Int = Typeface.NORMAL,
-        textSize: Float = 24F): TextView {
+        textSize: Float = 16F): TextView {
         val newTextView = TextView(view.context)
 
         //apply attributes
@@ -88,5 +100,40 @@ class Utilities {
         newTextView.isVisible = true
 
         return newTextView
+    }
+
+    fun <T, VH : RecyclerView.ViewHolder> createDragHelper(
+        list: ArrayList<T>,
+        adapter: RecyclerView.Adapter<VH>
+    ) : ItemTouchHelper{
+        val dragHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+            ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
+        ) {
+
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean {
+
+                viewHolder.itemView.elevation = 16F
+
+                val from = viewHolder.bindingAdapterPosition
+                val to = target.bindingAdapterPosition
+
+                Collections.swap(list, from, to)
+                adapter.notifyItemMoved(from, to)
+                return true
+            }
+
+            override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
+                super.onSelectedChanged(viewHolder, actionState)
+                viewHolder?.itemView?.elevation = 0F
+            }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) = Unit
+
+        })
+        return dragHelper
     }
 }

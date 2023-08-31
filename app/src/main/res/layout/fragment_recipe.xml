@@ -80,14 +80,14 @@
                     android:text="@string/selected_ingredients" />
 
                 <TextView
-                    android:id="@+id/recipeSelectIngredientsTextview"
+                    android:id="@+id/recipeIncludeIngredientsTextview"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:padding="5dp"
                     android:paddingStart="10dp"
                     android:paddingEnd="10dp"
                     android:background="@drawable/background_border"
-                    android:text="@string/select_ingredients"
+                    android:text="@string/include_ingredients"
                     android:textColor="@color/white"/>
             </LinearLayout>
 
@@ -129,7 +129,8 @@
                     android:id="@+id/recipeRecyclerView"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
-                    android:layout_weight="1"/>
+                    android:layout_weight="1"
+                    tools:listitem="@layout/recipe_frame"/>
             </LinearLayout>
 
             <TextView

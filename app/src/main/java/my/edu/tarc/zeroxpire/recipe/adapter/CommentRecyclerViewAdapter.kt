@@ -1,6 +1,7 @@
 package my.edu.tarc.zeroxpire.recipe.adapter
 
 import android.content.Context
+import android.text.InputType
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.EditText
@@ -41,19 +42,18 @@ class CommentRecyclerViewAdapter(
 
         val usernameTextView = holder.getView().findViewById<TextView>(R.id.usernameTextView)
         val dateTextView = holder.getView().findViewById<TextView>(R.id.dateTextView)
-        val likesCountTextView = holder.getView().findViewById<TextView>(R.id.likesCountTextView)
+//        val likesCountTextView = holder.getView().findViewById<TextView>(R.id.likesCountTextView)
         val displayedCommentEditText = holder.getView().findViewById<EditText>(R.id.displayedCommentEditText)
-        val likeImageView = holder.getView().findViewById<ImageView>(R.id.likeImageView)
-        val replyImageView = holder.getView().findViewById<ImageView>(R.id.replyImageView)
 
         usernameTextView.text = currentComment.username
 
         val sdf = SimpleDateFormat(parentContext.getString(R.string.date_format), Locale.getDefault())
         dateTextView.text = sdf.format(currentComment.dateTime)
 
+        displayedCommentEditText.inputType = InputType.TYPE_NULL
         displayedCommentEditText.setText(currentComment.comment)
 
-        likesCountTextView.text = currentComment.likesCount.toString()
+//        likesCountTextView.text = currentComment.likesCount.toString()
 
         //TODO
         // set likeImageView on click

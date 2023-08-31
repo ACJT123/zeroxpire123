@@ -134,6 +134,54 @@ class BookmarkViewModel {
         WebDB.getInstance(view.context).addToRequestQueue(jsonObjectRequest)
     }
 
+    fun removeArrayFromBookmarks(
+        userId: String,
+        recipeIDArrayList: ArrayList<String>,
+        view: View,
+        callback: (Boolean) -> Unit
+    ) {
+        val recipeIDArray = StringBuilder()
+        recipeIDArrayList.joinTo(recipeIDArray, "&recipeIDArr[]=", "&recipeIDArr[]=")
+        val url = StringBuilder()
+            .append(view.context.getString(R.string.url_server))
+            .append(view.context.getString(R.string.bookmarkRemoveArrayFromBookmarks))
+            .append("?userId=")
+            .append(userId)
+            .append(recipeIDArray.toString())
+            .toString()
+        Log.d("bookmark delete array", "URL: $url")
+        val successListener = Response.Listener<JSONObject>
+        { response ->
+            try {
+                if (response != null) {
+                    //get response
+                    Log.d("bookmark delete array", "Response: $response")
+                    callback(response.getBoolean("success"))
+                }
+            } catch (e: UnknownHostException) {
+                Log.d("bookmark delete array", "Unknown Host: ${e.message}")
+            }
+            catch (e: Exception) {
+                Log.d("bookmark delete array", "Response: ${e.message}")
+            }
+        }
+        val errorListener = Response.ErrorListener { error ->
+            Log.d("bookmark delete array", "Error Response: ${error.message}")
+        }
+
+        val jsonObjectRequest = JsonObjectRequest(
+            Request.Method.GET, url, null,
+            successListener,
+            errorListener
+        )
+        jsonObjectRequest.retryPolicy = DefaultRetryPolicy(
+            DefaultRetryPolicy.DEFAULT_TIMEOUT_MS,
+            0,
+            1f
+        )
+        WebDB.getInstance(view.context).addToRequestQueue(jsonObjectRequest)
+    }
+
 
     fun addToBookmark(
         userId: String,
@@ -167,6 +215,54 @@ class BookmarkViewModel {
         }
         val errorListener = Response.ErrorListener { error ->
             Log.d("bookmark create", "Error Response: ${error.message}")
+        }
+
+        val jsonObjectRequest = JsonObjectRequest(
+            Request.Method.GET, url, null,
+            successListener,
+            errorListener
+        )
+        jsonObjectRequest.retryPolicy = DefaultRetryPolicy(
+            DefaultRetryPolicy.DEFAULT_TIMEOUT_MS,
+            0,
+            1f
+        )
+        WebDB.getInstance(view.context).addToRequestQueue(jsonObjectRequest)
+    }
+
+    fun addToBookmarksFromArray(
+        userId: String,
+        recipeIDArrayList: ArrayList<String>,
+        view: View,
+        callback: (Boolean) -> Unit
+    ) {
+        val recipeIDArray = StringBuilder()
+        recipeIDArrayList.joinTo(recipeIDArray, "&recipeIDArr[]=", "&recipeIDArr[]=")
+        val url = StringBuilder()
+            .append(view.context.getString(R.string.url_server))
+            .append(view.context.getString(R.string.bookmarkAddToBookmarksFromArray))
+            .append("?userId=")
+            .append(userId)
+            .append(recipeIDArray)
+            .toString()
+        Log.d("bookmark create array", "URL: $url")
+        val successListener = Response.Listener<JSONObject>
+        { response ->
+            try {
+                if (response != null) {
+                    //get response
+                    Log.d("bookmark create array", "Response: $response")
+                    callback(response.getBoolean("success"))
+                }
+            } catch (e: UnknownHostException) {
+                Log.d("bookmark create array", "Unknown Host: ${e.message}")
+            }
+            catch (e: Exception) {
+                Log.d("bookmark create array", "Response: ${e.message}")
+            }
+        }
+        val errorListener = Response.ErrorListener { error ->
+            Log.d("bookmark create array", "Error Response: ${error.message}")
         }
 
         val jsonObjectRequest = JsonObjectRequest(

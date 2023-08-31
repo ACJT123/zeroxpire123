@@ -49,4 +49,7 @@
         <item name="android:textSize">24sp</item>
         <item name="android:gravity">start|top</item>
     </style>
+    <style name="CheckBox">
+        <item name="colorAccent">@color/btnColor</item>
+    </style>
 </resources>

@@ -9,4 +9,5 @@ data class Recipe(var recipeID: Int = -1,
                   var authorName: String = "",
                   var isBookmarked: Boolean = false,
                   var ingredientNames: String = "",
-                  var ingredientNamesArrayList: ArrayList<String> = ArrayList())
+                  var ingredientNamesArrayList: ArrayList<String> = ArrayList(),
+                  var ingredientIDArrayList: ArrayList<String> = ArrayList())

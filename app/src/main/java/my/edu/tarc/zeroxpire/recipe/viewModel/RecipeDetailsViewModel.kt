@@ -3,23 +3,33 @@ package my.edu.tarc.zeroxpire.recipe.viewModel
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
+import android.net.Uri
 import android.os.Environment
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.View
 import android.widget.Toast
+import androidx.core.net.toUri
 import com.android.volley.DefaultRetryPolicy
 import com.android.volley.Request
 import com.android.volley.Response
 import com.android.volley.toolbox.JsonObjectRequest
+import com.google.android.gms.tasks.Task
+import com.google.android.gms.tasks.Tasks
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.UploadTask
+import com.google.firebase.storage.ktx.storageMetadata
 import my.edu.tarc.zeroxpire.R
 import my.edu.tarc.zeroxpire.WebDB
+import my.edu.tarc.zeroxpire.model.Ingredient
 import my.edu.tarc.zeroxpire.recipe.Recipe
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.net.URL
 import java.net.UnknownHostException
+import kotlin.math.log
 
 class RecipeDetailsViewModel {
 
@@ -38,7 +48,7 @@ class RecipeDetailsViewModel {
             .append("&recipeID=")
             .append(recipeID)
             .toString()
-        Log.d("RecipeDetails", "URL: $url")
+        Log.d("Get Recipe By ID", "URL: $url")
         val successListener = Response.Listener<JSONObject>
         { response ->
             try {
@@ -46,7 +56,8 @@ class RecipeDetailsViewModel {
                     //get response
                     Log.d("JSON", response.toString())
                     val jsonRecipe = response.getJSONObject("records")
-                    val ingredientArr = jsonRecipe.getJSONArray("ingredientName")
+                    val ingredientNameArr = jsonRecipe.getJSONArray("ingredientName")
+                    val ingredientIdArr = jsonRecipe.getJSONArray("ingredientId")
 
                     recipe.recipeID = jsonRecipe.getInt("recipeID")
                     recipe.title = jsonRecipe.getString("title")
@@ -56,21 +67,22 @@ class RecipeDetailsViewModel {
                     recipe.authorID = jsonRecipe.getString("author")
                     recipe.authorName = jsonRecipe.getString("userName")
                     recipe.isBookmarked = jsonRecipe.getBoolean("isBookmarked")
-                    for (i in 0 until ingredientArr.length()) {
-                        recipe.ingredientNamesArrayList.add(ingredientArr[i].toString())
+                    for (i in 0 until ingredientNameArr.length()) {
+                        recipe.ingredientNamesArrayList.add(ingredientNameArr[i].toString())
+                        recipe.ingredientIDArrayList.add(ingredientIdArr[i].toString())
                     }
 
                     callback(recipe)
                 }
             } catch (e: UnknownHostException) {
-                Log.d("RecipeDetails", "Unknown Host: ${e.message}")
+                Log.d("Get Recipe By ID", "Unknown Host: ${e.message}")
             }
             catch (e: Exception) {
-                Log.d("RecipeDetails", "Response: ${e.message}")
+                Log.d("Get Recipe By ID", "Response: ${e.message}")
             }
         }
         val errorListener = Response.ErrorListener { error ->
-            Log.d("FK", "Error Response: ${error.message}")
+            Log.d("Get Recipe By ID", "Error Response: ${error.message}")
         }
 
         val jsonObjectRequest = JsonObjectRequest(
@@ -87,73 +99,162 @@ class RecipeDetailsViewModel {
     }
 
 
-    fun editRecipe(recipe: Recipe,
-                   ingredientIDArrayList: ArrayList<Int>,
-                   view: View,
-                   callback: (Boolean) -> Unit)
+    fun editRecipe(
+        ingredientsMutableList: MutableList<Ingredient>,
+        instructionsArrayList: ArrayList<String>,
+        recipe: Recipe,
+        imageUri: Uri,
+        view: View,
+        callback: (Boolean) -> Unit)
     {
-        //create string including the arguments
-        //to create ingredients array
-        val ingredients = StringBuilder()
-        ingredientIDArrayList.forEach {
-            ingredients.append("&ingredientIDArr[]=$it")
+        val ingredientsStringBuilder = StringBuilder()
+        ingredientsMutableList.forEach {
+            ingredientsStringBuilder.append("&ingredientIDArr[]=${it.ingredientId}")
         }
+        val firebaseStorageReference = FirebaseStorage.getInstance("gs://zeroxpire.appspot.com/").reference
 
-        val instructionsLink = cleanedAccessToken(recipe.instructionsLink, recipe.title, "txt")
+        val imagePathString = "recipeImage/${recipe.title}.jpg"
+        val imageUploadTask = storeImageToFireBase(imagePathString, imageUri)
 
-        val imageLink = cleanedAccessToken(recipe.imageLink, recipe.title, "jpg")
+        val instructionsPathString = "recipeInstructions/${recipe.title}.txt"
+        val instructionsUploadTask = storeTxtToFireBase(view, instructionsArrayList, instructionsPathString)
 
-        val url = StringBuilder()
-            .append(view.context.getString(R.string.url_server))
-            .append(view.context.getString(R.string.recipeUpdateRecipeURL))
-            .append("?recipeID=")
-            .append(recipe.recipeID)
-            .append("&title=")
-            .append(recipe.title)
-            .append("&instructionsLink=")
-            .append(instructionsLink)
-            .append("&imageLink=")
-            .append(imageLink)
-            .append("&note=")
-            .append(recipe.note)
-            .append(ingredients)
-            .toString()
-        Log.d("recipe update", "URL: $url")
-        val successListener = Response.Listener<JSONObject>
-        { response ->
-            try {
-                if (response != null) {
-                    //get response
-                    if (response.getBoolean("success")) {
-                        Toast.makeText(view.context, "Successfully edited recipe", Toast.LENGTH_SHORT).show()
+        instructionsUploadTask.addOnSuccessListener {
+            imageUploadTask.addOnSuccessListener {
+                val instructionURLTask = firebaseStorageReference.child(instructionsPathString).downloadUrl
+                val imageURLTask = firebaseStorageReference.child(imagePathString).downloadUrl
+
+                val getURLTask = Tasks.whenAllSuccess<Uri>(instructionURLTask, imageURLTask)
+                getURLTask.addOnSuccessListener {
+
+                    val instructionsLink = cleanedAccessToken(it[0].toString(), recipe.title, "txt")
+
+                    val imageLink = cleanedAccessToken(it[1].toString(), recipe.title, "jpg")
+
+                    val ingredients = ingredientsStringBuilder.toString()
+                    val url = StringBuilder()
+                        .append(view.context.getString(R.string.url_server))
+                        .append(view.context.getString(R.string.recipeUpdateRecipeURL))
+                        .append("?title=")
+                        .append(recipe.title)
+                        .append("&instructionsLink=")
+                        .append(instructionsLink)
+                        .append("&recipeID=")
+                        .append(recipe.recipeID)
+                        .append("&imageLink=")
+                        .append(imageLink)
+                        .append("&note=")
+                        .append(recipe.note)
+                        .append(ingredients)
+                        .toString()
+                    Log.d("recipe edit", "URL: $url")
+                    val successListener = Response.Listener<JSONObject>
+                    { response ->
+                        try {
+                            if (response != null) {
+                                //get response
+                                Log.d("recipe edit", "Response: $response")
+                                callback(response.getBoolean("success"))
+                            }
+                        } catch (e: UnknownHostException) {
+                            Log.d("recipe edit", "Unknown Host: ${e.message}")
+                        }
+                        catch (e: Exception) {
+                            Log.d("recipe edit", "Response: ${e.message}")
+                        }
                     }
-                    else {
-                        Toast.makeText(view.context, "Failed to edit recipe", Toast.LENGTH_SHORT).show()
+                    val errorListener = Response.ErrorListener { error ->
+                        Log.d("recipe edit", "Error Response: ${error.message}")
+                    }
+
+                    val jsonObjectRequest = JsonObjectRequest(
+                        Request.Method.GET, url, null,
+                        successListener,
+                        errorListener
+                    )
+                    jsonObjectRequest.retryPolicy = DefaultRetryPolicy(
+                        DefaultRetryPolicy.DEFAULT_TIMEOUT_MS,
+                        0,
+                        1f
+                    )
+                    WebDB.getInstance(view.context).addToRequestQueue(jsonObjectRequest)
+                }
+            }
+        }
+    }
+
+    fun editRecipeWithoutImage(
+        ingredientsMutableList: MutableList<Ingredient>,
+        instructionsArrayList: ArrayList<String>,
+        recipe: Recipe,
+        oldTitle: String,
+        view: View,
+        callback: (Boolean) -> Unit)
+    {
+        val ingredientsStringBuilder = StringBuilder()
+        ingredientsMutableList.forEach {
+            ingredientsStringBuilder.append("&ingredientIDArr[]=${it.ingredientId}")
+        }
+        val firebaseStorageReference = FirebaseStorage.getInstance("gs://zeroxpire.appspot.com/").reference
+
+        val instructionsPathString = "recipeInstructions/${recipe.title}.txt"
+        val instructionsUploadTask = storeTxtToFireBase(view, instructionsArrayList, instructionsPathString)
+
+        instructionsUploadTask.addOnSuccessListener {
+            firebaseStorageReference.child(instructionsPathString).downloadUrl.addOnSuccessListener {
+
+                val instructionsLink = cleanedAccessToken(it.toString(), recipe.title, "txt")
+
+                val imageLink = cleanedAccessToken(recipe.imageLink, oldTitle, "jpg")
+
+                val ingredients = ingredientsStringBuilder.toString()
+                val url = StringBuilder()
+                    .append(view.context.getString(R.string.url_server))
+                    .append(view.context.getString(R.string.recipeUpdateRecipeURL))
+                    .append("?title=")
+                    .append(recipe.title)
+                    .append("&instructionsLink=")
+                    .append(instructionsLink)
+                    .append("&recipeID=")
+                    .append(recipe.recipeID)
+                    .append("&imageLink=")
+                    .append(imageLink)
+                    .append("&note=")
+                    .append(recipe.note)
+                    .append(ingredients)
+                    .toString()
+                Log.d("recipe edit", "URL: $url")
+                val successListener = Response.Listener<JSONObject>
+                { response ->
+                    try {
+                        if (response != null) {
+                            //get response
+                            Log.d("recipe edit", "Response: $response")
+                            callback(response.getBoolean("success"))
+                        }
+                    } catch (e: UnknownHostException) {
+                        Log.d("recipe edit", "Unknown Host: ${e.message}")
+                    } catch (e: Exception) {
+                        Log.d("recipe edit", "Response: ${e.message}")
                     }
                 }
-                callback(true)
-            } catch (e: UnknownHostException) {
-                Log.d("recipe update", "Unknown Host: ${e.message}")
-            }
-            catch (e: Exception) {
-                Log.d("recipe update", "Response: ${e.message}")
-            }
-        }
-        val errorListener = Response.ErrorListener { error ->
-            Log.d("recipe update", "Error Response: ${error.message}")
-        }
+                val errorListener = Response.ErrorListener { error ->
+                    Log.d("recipe edit", "Error Response: ${error.message}")
+                }
 
-        val jsonObjectRequest = JsonObjectRequest(
-            Request.Method.GET, url, null,
-            successListener,
-            errorListener
-        )
-        jsonObjectRequest.retryPolicy = DefaultRetryPolicy(
-            DefaultRetryPolicy.DEFAULT_TIMEOUT_MS,
-            0,
-            1f
-        )
-        WebDB.getInstance(view.context).addToRequestQueue(jsonObjectRequest)
+                val jsonObjectRequest = JsonObjectRequest(
+                    Request.Method.GET, url, null,
+                    successListener,
+                    errorListener
+                )
+                jsonObjectRequest.retryPolicy = DefaultRetryPolicy(
+                    DefaultRetryPolicy.DEFAULT_TIMEOUT_MS,
+                    0,
+                    1f
+                )
+                WebDB.getInstance(view.context).addToRequestQueue(jsonObjectRequest)
+            }
+        }
     }
 
     fun deleteRecipe(
@@ -203,19 +304,95 @@ class RecipeDetailsViewModel {
         WebDB.getInstance(view.context).addToRequestQueue(jsonObjectRequest)
     }
 
-    private fun cleanedAccessToken(accessToken: String, title: String, fileType: String): String {
-        val tokenLength = 36
-        return java.lang.StringBuilder()
-            .append(title)
-            .append(".$fileType?alt=media%26token=")
-            .append(accessToken.substring(accessToken.length-tokenLength, accessToken.length))
-            .toString()
+    fun createRecipe(
+        userId: String,
+        ingredientsMutableList: MutableList<Ingredient>,
+        instructionsArrayList: ArrayList<String>,
+        recipe: Recipe,
+        imageUri: Uri,
+        view: View,
+        callback: (Boolean) -> Unit)
+    {
+        val ingredientsStringBuilder = StringBuilder()
+        ingredientsMutableList.forEach {
+            ingredientsStringBuilder.append("&ingredientIDArr[]=${it.ingredientId}")
+        }
+        val firebaseStorageReference = FirebaseStorage.getInstance("gs://zeroxpire.appspot.com/").reference
+
+        val imagePathString = "recipeImage/${recipe.title}.jpg"
+        val imageUploadTask = storeImageToFireBase(imagePathString, imageUri)
+
+        val instructionsPathString = "recipeInstructions/${recipe.title}.txt"
+        val instructionsUploadTask = storeTxtToFireBase(view, instructionsArrayList, instructionsPathString)
+
+        instructionsUploadTask.addOnSuccessListener {
+            imageUploadTask.addOnSuccessListener {
+                val instructionURLTask = firebaseStorageReference.child(instructionsPathString).downloadUrl
+                val imageURLTask = firebaseStorageReference.child(imagePathString).downloadUrl
+
+                val getURLTask = Tasks.whenAllSuccess<Uri>(instructionURLTask, imageURLTask)
+                getURLTask.addOnSuccessListener {
+
+                    val instructionsLink = cleanedAccessToken(
+                        it[0].toString(),
+                        recipe.title,
+                        "txt")
+
+                    val imageLink = cleanedAccessToken(it[1].toString(), recipe.title, "jpg")
+
+                    val ingredients = ingredientsStringBuilder.toString()
+                    val url = StringBuilder()
+                        .append(view.context.getString(R.string.url_server))
+                        .append(view.context.getString(R.string.recipeCreateURL))
+                        .append("?title=")
+                        .append(recipe.title)
+                        .append("&instructionsLink=")
+                        .append(instructionsLink)
+                        .append("&imageLink=")
+                        .append(imageLink)
+                        .append("&note=")
+                        .append(recipe.note)
+                        .append("&author=")
+                        .append(userId)
+                        .append(ingredients)
+                        .toString()
+                    Log.d("recipe create", "URL: $url")
+                    val successListener = Response.Listener<JSONObject>
+                    { response ->
+                        try {
+                            if (response != null) {
+                                //get response
+                                Log.d("recipe create", "Response: $response")
+                                callback(response.getBoolean("success"))
+                            }
+                        } catch (e: UnknownHostException) {
+                            Log.d("recipe create", "Unknown Host: ${e.message}")
+                        }
+                        catch (e: Exception) {
+                            Log.d("recipe create", "Response: ${e.message}")
+                        }
+                    }
+                    val errorListener = Response.ErrorListener { error ->
+                        Log.d("recipe create", "Error Response: ${error.message}")
+                    }
+
+                    val jsonObjectRequest = JsonObjectRequest(
+                        Request.Method.GET, url, null,
+                        successListener,
+                        errorListener
+                    )
+                    jsonObjectRequest.retryPolicy = DefaultRetryPolicy(
+                        DefaultRetryPolicy.DEFAULT_TIMEOUT_MS,
+                        0,
+                        1f
+                    )
+                    WebDB.getInstance(view.context).addToRequestQueue(jsonObjectRequest)
+                }
+            }
+        }
     }
 
     fun convertXmlToPdf(view: View, displayMetrics: DisplayMetrics, fileName: String) {
-
-
-
         view.measure(
             View.MeasureSpec.makeMeasureSpec(displayMetrics.widthPixels, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(displayMetrics.heightPixels, View.MeasureSpec.EXACTLY)
@@ -248,8 +425,7 @@ class RecipeDetailsViewModel {
         document.finishPage(page)
 
         // Specify the path and filename of the output PDF file
-        val downloadsDir =
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val downloadsDir = view.context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
         val filePath = File(downloadsDir, fileName)
         try {
             // Save the document to a file
@@ -266,5 +442,47 @@ class RecipeDetailsViewModel {
     }
 
 
+    private fun cleanedAccessToken(accessToken: String, title: String, fileType: String): String {
+        val tokenLength = 36
+        return java.lang.StringBuilder()
+            .append(title)
+            .append(".$fileType?alt=media%26token=")
+            .append(accessToken.substring(accessToken.length-tokenLength, accessToken.length))
+            .toString()
+    }
 
+
+    private fun storeTxtToFireBase(
+        view: View,
+        array: ArrayList<String>,
+        pathString: String
+    ): UploadTask {
+        //create file
+        File(view.context.filesDir, "temp.txt").bufferedWriter().use { out ->
+            array.forEach {
+                out.write("${it}\n")
+            }
+        }
+
+        val firebaseStorageReference = FirebaseStorage.getInstance("gs://zeroxpire.appspot.com/").reference
+        val storageRef = firebaseStorageReference.child(pathString)
+        val uri = File(view.context.filesDir, "temp.txt").toUri()
+        val metadata = storageMetadata {
+            contentType = "text/plain"
+        }
+
+        //store to firebase
+        return storageRef.putFile(uri, metadata)
+    }
+
+    private fun storeImageToFireBase(
+        pathString: String,
+        imageUri: Uri
+    ): UploadTask {
+        val firebaseStorageReference = FirebaseStorage.getInstance("gs://zeroxpire.appspot.com/").reference
+        val storageRef = firebaseStorageReference.child(pathString)
+
+        //store to firebase
+        return storageRef.putFile(imageUri)
+    }
 }

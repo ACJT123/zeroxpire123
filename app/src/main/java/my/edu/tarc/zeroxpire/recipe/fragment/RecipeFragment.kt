@@ -1,29 +1,30 @@
 package my.edu.tarc.zeroxpire.recipe.fragment
 
+import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.graphics.Color
 import android.os.Bundle
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.TextPaint
+import android.text.method.LinkMovementMethod
+import android.text.style.ClickableSpan
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.Button
-import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.SearchView
-import android.widget.TextView
+import android.widget.*
 import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat
-import androidx.core.view.isGone
+import androidx.core.view.get
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.StaggeredGridLayoutManager
-import androidx.transition.Visibility
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CoroutineScope
@@ -45,7 +46,7 @@ import my.edu.tarc.zeroxpire.viewmodel.IngredientViewModel
 class RecipeFragment : Fragment(), IngredientClickListener {
     // declaration
     private lateinit var bookmarksImageView: ImageView
-    private lateinit var recipeSelectIngredientsTextview: TextView
+    private lateinit var recipeIncludeIngredientsTextview: TextView
     private lateinit var recipeGoogleSearchTextView: TextView
     private lateinit var recipeSearchView: SearchView
     private lateinit var recipeRecyclerView: RecyclerView
@@ -98,10 +99,7 @@ class RecipeFragment : Fragment(), IngredientClickListener {
         recipeRecyclerView.layoutManager = layoutManager
         recipeRecyclerView.addItemDecoration(RecipeRecyclerViewItemDecoration(50))
 
-        ingredientViewModel.ingredientList.observe(viewLifecycleOwner){ingredients->
-            getFromStoredIngredients = ingredients as MutableList<Ingredient>
-            Log.d("Stored ingredients", getFromStoredIngredients.toString())
-        }
+        getFromStoredIngredients =  ingredientViewModel.ingredientList.value as MutableList<Ingredient>
 
         selectedIngredientAdapter = IngredientAdapter(object : IngredientClickListener {
             override fun onIngredientClick(ingredient: Ingredient) {
@@ -112,27 +110,42 @@ class RecipeFragment : Fragment(), IngredientClickListener {
         // recommend recipe based on ingredients
         recommendRecipes()
 
+        initBottomSheet(bottomSheetIngredientAdapter)
+
+        val span = SpannableString(getString(R.string.search_on_google))
+        val clickableSpan: ClickableSpan = object : ClickableSpan() {
+            @SuppressLint("SetJavaScriptEnabled")
+            override fun onClick(textView: View) {
+                recipeWebView.webViewClient = MyBrowser()
+                recipeWebView.settings.loadsImagesAutomatically = true
+                recipeWebView.settings.javaScriptEnabled = true
+                recipeWebView.scrollBarStyle = View.SCROLLBARS_INSIDE_OVERLAY
+                recipeWebView.loadUrl("https://www.google.com/search?q=${recipeSearchView.query}")
+
+                recipeRecyclerViewLinearLayout.visibility = View.GONE
+                recipeGoogleSearchTextView.visibility = View.GONE
+                recipeWebViewLinearLayout.visibility = View.VISIBLE
+            }
+
+            override fun updateDrawState(ds: TextPaint) {
+                super.updateDrawState(ds)
+                ds.color = Color.BLUE
+                ds.isUnderlineText = false
+            }
+        }
+        span.setSpan(clickableSpan, 44, 61, Spanned.SPAN_INCLUSIVE_INCLUSIVE)
+        recipeGoogleSearchTextView.text = span
+        recipeGoogleSearchTextView.movementMethod = LinkMovementMethod.getInstance()
+        recipeGoogleSearchTextView.highlightColor = Color.TRANSPARENT
+
         // navigation
         bookmarksImageView.setOnClickListener {
             findNavController().navigate(R.id.action_recipeFragment_to_bookmarks)
         }
 
         // select ingredients
-        recipeSelectIngredientsTextview.setOnClickListener {
-            showBottomSheetDialog(bottomSheetIngredientAdapter)
-        }
-
-        // search on google
-        recipeGoogleSearchTextView.setOnClickListener {
-            recipeWebView.webViewClient = MyBrowser()
-            recipeWebView.settings.loadsImagesAutomatically = true
-            recipeWebView.settings.javaScriptEnabled = true
-            recipeWebView.scrollBarStyle = View.SCROLLBARS_INSIDE_OVERLAY
-            recipeWebView.loadUrl("https://www.google.com/search?q=${recipeSearchView.query}")
-
-            recipeRecyclerViewLinearLayout.visibility = View.GONE
-            recipeGoogleSearchTextView.visibility = View.GONE
-            recipeWebViewLinearLayout.visibility = View.VISIBLE
+        recipeIncludeIngredientsTextview.setOnClickListener {
+            showBottomSheetDialog()
         }
 
         // searchView
@@ -180,23 +193,28 @@ class RecipeFragment : Fragment(), IngredientClickListener {
             }
         })
 
+        navigateBack()
+
         return currentView
     }
 
-
-
-
-    private fun showBottomSheetDialog(adapter: IngredientAdapter) {
+    private fun initBottomSheet(adapter: IngredientAdapter) {
         bottomSheetDialog = BottomSheetDialog(requireContext())
         bottomSheetView = layoutInflater.inflate(R.layout.bottom_sheet_dialog, null)
         bottomSheetDialog.setContentView(bottomSheetView)
 
+        bottomSheetIngredientAdapter.setIngredient(getFromStoredIngredients)
         bottomSheetRecyclerView = bottomSheetView.findViewById(R.id.recyclerviewNumIngredientChoosed)
         bottomSheetRecyclerView.layoutManager = LinearLayoutManager(requireContext())
         bottomSheetRecyclerView.adapter = adapter
+    }
+
+    @SuppressLint("NotifyDataSetChanged", "InflateParams")
+    private fun showBottomSheetDialog() {
+
 
         val addBtn = bottomSheetView.findViewById<Button>(R.id.addBtn)
-        addBtn.isEnabled = selectedIngredientsTemporary.isNotEmpty()
+        addBtn.text = "confirm"
 
         addBtn.setOnClickListener {
             selectedIngredients = selectedIngredientsTemporary.toMutableList()
@@ -211,9 +229,9 @@ class RecipeFragment : Fragment(), IngredientClickListener {
                 Log.d("minus",getFromStoredIngredients.minus(selectedIngredients.toSet()).toString())
 
             }
+            displayIngredients()
             if(selectedIngredients.isNotEmpty()){
                 Log.d("Selected is not empty", selectedIngredients.size.toString())
-                displayIngredients()
             }
             else {
                 Log.d("Selected is empty", selectedIngredients.size.toString())
@@ -231,8 +249,21 @@ class RecipeFragment : Fragment(), IngredientClickListener {
         }
         bottomSheetDialog.show()
 
-        adapter.setIngredient(getFromStoredIngredients.minus(selectedIngredients.toSet()))
-        adapter.notifyDataSetChanged()
+        bottomSheetRecyclerView.adapter?.notifyDataSetChanged()
+
+//        if (selectedIngredients.isNotEmpty()) {
+//            selectedIngredients.forEach {
+//                val pos = adapter.getPosition(it)
+//                val itemView = bottomSheetRecyclerView.getChildAt(pos)
+//                itemView.setBackgroundColor(
+//                    ContextCompat.getColor(
+//                        requireContext(),
+//                        R.color.btnColor
+//                    )
+//                )
+//                itemView.tag = true
+//            }
+//        }
     }
 
     private fun displayIngredients() {
@@ -285,8 +316,6 @@ class RecipeFragment : Fragment(), IngredientClickListener {
             }
         }
 
-        val addBtn = bottomSheetView.findViewById<Button>(R.id.addBtn)
-        addBtn.isEnabled = selectedIngredientsTemporary.isNotEmpty()
 
         val selectedTextView = bottomSheetView.findViewById<TextView>(R.id.selectedTextView)
         selectedTextView.text = if(selectedIngredientsTemporary.isEmpty()){
@@ -331,7 +360,7 @@ class RecipeFragment : Fragment(), IngredientClickListener {
 
     private fun initView() {
         bookmarksImageView = currentView.findViewById(R.id.bookmarksImageView)
-        recipeSelectIngredientsTextview = currentView.findViewById(R.id.recipeSelectIngredientsTextview)
+        recipeIncludeIngredientsTextview = currentView.findViewById(R.id.recipeIncludeIngredientsTextview)
         recipeGoogleSearchTextView = currentView.findViewById(R.id.recipeGoogleSearchTextView)
         recipeSearchView = currentView.findViewById(R.id.recipeSearchView)
         recipeRecyclerView = currentView.findViewById(R.id.recipeRecyclerView)
@@ -347,4 +376,24 @@ class RecipeFragment : Fragment(), IngredientClickListener {
         recipeRecyclerViewLinearLayout.visibility = View.GONE
         recipeGoogleSearchTextView.visibility = View.VISIBLE
     }
+
+    private fun navigateBack() {
+        val onBackPressedCallback = object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                val builder = AlertDialog.Builder(requireContext())
+                builder.setMessage("Are you sure you want to Exit the app?").setCancelable(false)
+                    .setPositiveButton("Exit") { dialog, id ->
+                        requireActivity().finish()
+                    }.setNegativeButton("Cancel") { dialog, id ->
+                        dialog.dismiss()
+                    }
+                val alert = builder.create()
+                alert.show()
+            }
+        }
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner, onBackPressedCallback
+        )
+    }
+
 }

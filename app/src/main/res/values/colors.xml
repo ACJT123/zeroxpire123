@@ -19,4 +19,8 @@
     <color name="favoriteBtnColor">#FD5C70</color>
     <color name="printBtnColor">#5D5D5F</color>
 
+    <color name="red">#FD5C70</color>
+    <color name="lightBlue">#9090FF</color>
+    <color name="grey">#5D5D5F</color>
+
 </resources>

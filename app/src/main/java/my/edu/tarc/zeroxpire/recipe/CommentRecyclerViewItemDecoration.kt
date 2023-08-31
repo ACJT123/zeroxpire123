@@ -4,8 +4,7 @@ import android.graphics.Rect
 import android.view.View
 import androidx.recyclerview.widget.RecyclerView
 
-class CommentRecyclerViewItemDecoration(space: Int) : RecyclerView.ItemDecoration() {
-    private var space: Int? = space
+class CommentRecyclerViewItemDecoration(private var space: Int) : RecyclerView.ItemDecoration() {
 
     override fun getItemOffsets(
         outRect: Rect,
@@ -13,6 +12,14 @@ class CommentRecyclerViewItemDecoration(space: Int) : RecyclerView.ItemDecoratio
         parent: RecyclerView,
         state: RecyclerView.State
     ) {
-        outRect.bottom = space!!
+        outRect.top = space
+        outRect.bottom = space
+
+        if (parent.getChildLayoutPosition(view) == 0) {
+            outRect.top = space.times(2)
+        }
+        if (parent.getChildLayoutPosition(view) == parent.childCount) {
+            outRect.bottom = space.times(2)
+        }
     }
 }

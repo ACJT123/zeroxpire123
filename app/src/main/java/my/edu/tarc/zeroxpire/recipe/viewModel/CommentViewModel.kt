@@ -36,14 +36,10 @@ class CommentViewModel {
             Request.Method.GET, url, null,
             { response ->
                 try {
+                    Log.d("Create Comment", response.toString())
                     if (response != null) {
                         //get response
-                        if (response.getBoolean("success")) {
-                            Toast.makeText(view.context, "Successfully uploaded recipe", Toast.LENGTH_SHORT).show()
-                        }
-                        else {
-                            Toast.makeText(view.context, "Failed to upload recipe", Toast.LENGTH_SHORT).show()
-                        }
+                        callback(response.getBoolean("success"))
                     }
                     callback(true)
                 } catch (e: UnknownHostException) {
@@ -54,7 +50,6 @@ class CommentViewModel {
                 }
             },
             { error ->
-                Toast.makeText(view.context, "Failed to upload recipe, please try again later", Toast.LENGTH_SHORT).show()
                 Log.d("Create Comment", "Error Response: ${error.message}")
             }
         )

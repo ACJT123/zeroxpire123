@@ -1,15 +1,25 @@
 package my.edu.tarc.zeroxpire.recipe.fragment
 
+import android.annotation.SuppressLint
+import android.content.res.ColorStateList
 import android.graphics.Canvas
+import android.graphics.Color
 import android.os.Bundle
 import android.text.InputType
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.TextPaint
+import android.text.method.LinkMovementMethod
+import android.text.style.ClickableSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
-import android.widget.ImageButton
 import android.widget.ImageView
+import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.core.view.isGone
+import androidx.core.widget.ImageViewCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -22,7 +32,7 @@ import com.google.firebase.auth.FirebaseAuth
 import it.xabaras.android.recyclerview.swipedecorator.RecyclerViewSwipeDecorator
 import my.edu.tarc.zeroxpire.R
 import my.edu.tarc.zeroxpire.recipe.Recipe
-import my.edu.tarc.zeroxpire.recipe.adapter.BookmarksRecyclerViewAdapter
+import my.edu.tarc.zeroxpire.recipe.adapter.BookmarkRecyclerViewAdapter
 import my.edu.tarc.zeroxpire.recipe.viewModel.BookmarkViewModel
 
 
@@ -33,10 +43,16 @@ class BookmarksFragment : Fragment() {
 
     private lateinit var currentView: View
 
+    private var isEditing = false
 
     private lateinit var upBtn: ImageView
+    private lateinit var deleteImageView: ImageView
+    private lateinit var editImageView: ImageView
     private lateinit var recyclerView: RecyclerView
     private lateinit var appBarEditText: EditText
+    private lateinit var noBookmarksFoundTextView: TextView
+
+    private lateinit var recyclerViewAdapter: BookmarkRecyclerViewAdapter
 
     private var recipeArrayList = ArrayList<Recipe>()
 
@@ -44,6 +60,7 @@ class BookmarksFragment : Fragment() {
 
     private lateinit var swipeHelper: ItemTouchHelper
 
+    @SuppressLint("NotifyDataSetChanged")
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -55,8 +72,30 @@ class BookmarksFragment : Fragment() {
 
         // assign views
         upBtn = currentView.findViewById(R.id.upBtn)
+        deleteImageView = currentView.findViewById(R.id.deleteImageView)
+        editImageView = currentView.findViewById(R.id.editImageView)
         recyclerView = currentView.findViewById(R.id.bookmarksRecyclerView)
         appBarEditText = currentView.findViewById(R.id.appBarEditText)
+        noBookmarksFoundTextView = currentView.findViewById(R.id.noBookmarksFoundTextView)
+
+        loadBookmarks()
+
+        val span = SpannableString(getString(R.string.no_bookmarks_found))
+        val clickableSpan: ClickableSpan = object : ClickableSpan() {
+            override fun onClick(textView: View) {
+                findNavController().popBackStack()
+            }
+
+            override fun updateDrawState(ds: TextPaint) {
+                super.updateDrawState(ds)
+                ds.color = Color.BLUE
+                ds.isUnderlineText = false
+            }
+        }
+        span.setSpan(clickableSpan, 20, 27, Spanned.SPAN_INCLUSIVE_INCLUSIVE)
+        noBookmarksFoundTextView.text = span
+        noBookmarksFoundTextView.movementMethod = LinkMovementMethod.getInstance()
+        noBookmarksFoundTextView.highlightColor = Color.TRANSPARENT
 
         // navigation
         upBtn.setOnClickListener{
@@ -70,7 +109,52 @@ class BookmarksFragment : Fragment() {
         recyclerView.layoutManager = LinearLayoutManager(currentView.context)
 
 
-        loadBookmarks()
+        editImageView.setOnClickListener {
+            isEditing = !isEditing
+            if (isEditing) {
+                //change icons
+                deleteImageView.isGone = false
+                editImageView.setImageResource(R.drawable.baseline_edit_off_24)
+
+                recyclerViewAdapter.isEditing = true
+            }else {
+                //change icons
+                deleteImageView.isGone = true
+                editImageView.setImageResource(R.drawable.baseline_edit_24)
+
+                recyclerViewAdapter.isEditing = false
+            }
+            ImageViewCompat.setImageTintList(
+                editImageView, ColorStateList.valueOf(ContextCompat.getColor(currentView.context, R.color.btnColor)))
+            recyclerViewAdapter.notifyDataSetChanged()
+            recyclerView.adapter = recyclerViewAdapter
+        }
+
+        deleteImageView.setOnClickListener {
+            val recipeIDArrayList = ArrayList<String>()
+            val selectedPosArrayList = recyclerViewAdapter.getSelectedPosArrayList()
+
+            selectedPosArrayList.forEach {
+                recipeIDArrayList.add(recipeArrayList[it].recipeID.toString())
+            }
+            bookmarkViewModel.removeArrayFromBookmarks(userID, recipeIDArrayList, currentView) {
+                val snackBar = Snackbar.make(currentView, "Removed from bookmarks", Snackbar.LENGTH_SHORT)
+                snackBar.setAction("UNDO",
+                    UndoListener {
+                        bookmarkViewModel.addToBookmarksFromArray(userID, recipeIDArrayList, currentView) {
+                            loadBookmarks()
+                        }
+                    }
+                )
+                snackBar.show()
+            }
+            selectedPosArrayList.sortDescending()
+            selectedPosArrayList.forEach {
+                recipeArrayList.removeAt(it)
+            }
+            recyclerViewAdapter = BookmarkRecyclerViewAdapter(recipeArrayList)
+            recyclerView.adapter = recyclerViewAdapter
+        }
 
         return currentView
     }
@@ -99,24 +183,21 @@ class BookmarksFragment : Fragment() {
                 val pos = viewHolder.bindingAdapterPosition
                 val recipeID = recipeArrayList[pos].recipeID.toString()
 
-                bookmarkViewModel.removeFromBookmarks(
-                    userID,
-                    recipeID,
-                    currentView
-                ) {
+                bookmarkViewModel.removeFromBookmarks(userID, recipeID, currentView) {
                     val snackBar = Snackbar.make(currentView, "Removed from bookmarks", Snackbar.LENGTH_SHORT)
                     snackBar.setAction("UNDO",
-                        UndoListener(userID,
-                            recipeID,
-                            bookmarkViewModel) {
-                            loadBookmarks()
+                        UndoListener {
+                            bookmarkViewModel.addToBookmark(userID, recipeID, currentView) {
+                                loadBookmarks()
+                            }
                         }
                     )
                     snackBar.show()
                 }
 
                 recipeArrayList.removeAt(pos)
-                recyclerView?.adapter = BookmarksRecyclerViewAdapter(recipeArrayList)
+                recyclerViewAdapter = BookmarkRecyclerViewAdapter(recipeArrayList)
+                recyclerView.adapter = recyclerViewAdapter
             }
 
             override fun onChildDraw(
@@ -145,24 +226,27 @@ class BookmarksFragment : Fragment() {
 
     private fun loadBookmarks() {
         bookmarkViewModel.getBookmarksByUserID(userID, currentView) {
-            recipeArrayList = it
-            recyclerView.adapter = BookmarksRecyclerViewAdapter(recipeArrayList)
+            if (it.isNotEmpty()) {
+                noBookmarksFoundTextView.isGone = true
+                recyclerView.isGone = false
 
-            setUpItemTouchHelper()
+                recipeArrayList = it
+                recyclerViewAdapter = BookmarkRecyclerViewAdapter(recipeArrayList)
+                recyclerView.adapter = BookmarkRecyclerViewAdapter(recipeArrayList)
+
+                setUpItemTouchHelper()
+            }else {
+                noBookmarksFoundTextView.isGone = false
+                recyclerView.isGone = true
+            }
         }
     }
 
     class UndoListener(
-        private val userId: String,
-        private val recipeID: String,
-        private val bookmarkViewModel: BookmarkViewModel,
         private val callback: (Boolean) -> Unit
-
     ) : View.OnClickListener {
         override fun onClick(v: View) {
-            bookmarkViewModel.addToBookmark(userId, recipeID, v) {
-                callback(true)
-            }
+            callback(true)
         }
     }
 

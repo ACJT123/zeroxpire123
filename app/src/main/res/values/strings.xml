@@ -137,18 +137,18 @@ Last updated: [Date]\n
     <string name="url_read_username">user/getUsername.php</string>
 
     <string name="recipe_instructions">Recipe instructions</string>
-    <string name="step_1">Step 1:</string>
-    <string name="step">Step %1$d: </string>
+    <string name="step_with_number">Step %1$d</string>
+    <string name="step">%1$d: </string>
     <string name="note">Note</string>
     <string name="type_note_here">Type note here</string>
-    <string name="create_recipe">Create recipe</string>
+    <string name="create_recipe">Create New Recipe</string>
     <string name="add_instructions">Add instructions</string>
     <string name="add_ingredients">Add ingredients</string>
     <string name="ingredient">Ingredient</string>
     <string name="ingredientsSubtopic">Ingredients</string>
     <string name="instructionsSubtopic">Instructions</string>
     <string name="category">Category</string>
-    <string name="recipe_title_hint">Type recipe title here</string>
+    <string name="recipe_title_hint">Title</string>
     <string name="create_recipe_top_bar">Create recipe</string>
     <string name="select_ingredient">Select an ingredient</string>
     <string name="recipeSearchURL">/recipe/search.php</string>
@@ -159,13 +159,15 @@ Last updated: [Date]\n
     <string name="recipeDeleteRecipeURL">/recipe/delete.php</string>
     <string name="bookmarkGetBookmarksByUserID">/recipe/getBookmarksByUserID.php</string>
     <string name="bookmarkRemoveFromBookmarks">/recipe/removeFromBookmarks.php</string>
+    <string name="bookmarkRemoveArrayFromBookmarks">/recipe/removeArrayFromBookmarks.php</string>
     <string name="bookmarkAddToBookmark">/recipe/addToBookmark.php</string>
+    <string name="bookmarkAddToBookmarksFromArray">/recipe/addToBookmarksFromArray.php</string>
     <string name="commentCreateURL">/comment/create.php</string>
     <string name="commentGetCommentsByRecipeIDURL">/comment/getCommentsByRecipeID.php</string>
     <string name="search_on_google">There are no recipes that match your search\nSearch on Google?</string>
-    <string name="select_ingredients">Select ingredients</string>
+    <string name="include_ingredients">Include ingredients</string>
     <string name="selected_ingredients">Ingredients:</string>
-    <string name="author">author: %1$s</string>
+    <string name="author">Author: %1$s</string>
     <string name="recipe_details">Recipe Details</string>
     <string name="comment">Comment</string>
     <string name="like">like</string>
@@ -182,7 +184,16 @@ Last updated: [Date]\n
     <string name="send">Send</string>
     <string name="bookmarks">Bookmarks</string>
     <string name="no_comments">No comments found</string>
-    <string name="default_notification_channel_id">channel_id</string>
+    <string name="no_bookmarks_found">No Bookmarks Found, go Back?</string>
+    <string name="recipe_image_description">Image for recipe</string>
+    <string name="instruction_path_string">recipeInstructions/%1$s.txt</string>
+    <string name="image_path_string">recipeImage/%1$s.jpg</string>
+    <string name="drag">Drag</string>
+    <string name="ingredient_to_include">Select ingredient to include in recipe.</string>
+    <string name="instruction_hint">Recipe instructions</string>
+    <string name="step_hint">step</string>
 
+
+    <string name="default_notification_channel_id">channel_id</string>
 
 </resources>

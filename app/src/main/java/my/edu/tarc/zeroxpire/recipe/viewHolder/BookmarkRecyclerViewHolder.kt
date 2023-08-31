@@ -5,7 +5,7 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView
 import my.edu.tarc.zeroxpire.R
 
-class BookmarksRecyclerViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+class BookmarkRecyclerViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
     private val view: ConstraintLayout
 
     init {

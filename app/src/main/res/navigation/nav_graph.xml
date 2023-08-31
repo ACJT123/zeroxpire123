@@ -77,10 +77,7 @@
             app:exitAnim="@anim/nav_default_exit_anim"
             app:popEnterAnim="@anim/nav_default_pop_enter_anim"
             app:popExitAnim="@anim/nav_default_pop_exit_anim"
-            app:popUpTo="@id/recipeFragment" />
-        <action
-            android:id="@+id/action_recipeFragment_to_ingredientFragment"
-            app:destination="@id/ingredientFragment" />
+            app:popUpTo="@id/recipeFragment"/>
     </fragment>
     <fragment
         android:id="@+id/termsAndConditionsFragment"
@@ -226,7 +223,12 @@
         android:id="@+id/recipeCreateFragment"
         android:name="my.edu.tarc.zeroxpire.recipe.fragment.RecipeCreateFragment"
         android:label="fragment_recipe_create"
-        tools:layout="@layout/fragment_recipe_create" />
+        tools:layout="@layout/fragment_recipe_create" >
+        <argument
+            android:name="recipeID"
+            app:argType="string"
+            android:defaultValue="-1"/>
+    </fragment>
     <fragment
         android:id="@+id/recipeBookmarksFragment"
         android:name="my.edu.tarc.zeroxpire.recipe.fragment.BookmarksFragment"
@@ -249,5 +251,13 @@
         <argument
             android:name="recipeID"
             app:argType="string" />
+        <action
+            android:id="@+id/action_recipeDetailsFragment_to_recipeCreateFragment"
+            app:destination="@id/recipeCreateFragment"
+            app:enterAnim="@anim/nav_default_enter_anim"
+            app:exitAnim="@anim/nav_default_exit_anim"
+            app:popEnterAnim="@anim/nav_default_pop_enter_anim"
+            app:popExitAnim="@anim/nav_default_pop_exit_anim"
+            app:popUpTo="@id/recipeDetailsFragment"/>
     </fragment>
 </navigation>
