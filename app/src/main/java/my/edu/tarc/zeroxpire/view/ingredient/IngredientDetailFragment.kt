@@ -72,9 +72,6 @@ class IngredientDetailFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-
-        val context = requireContext()
-
         // Set fragment result listeners to receive data from other fragments
         setFragmentResultListener("requestName") { _, bundle ->
             val result = bundle.getString("name")

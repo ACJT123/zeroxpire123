@@ -43,6 +43,9 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import my.edu.tarc.zeroxpire.adapters.IngredientAdapter
 import my.edu.tarc.zeroxpire.adapters.RecognitionResultsAdapterDate
 import my.edu.tarc.zeroxpire.adapters.RecognitionResultsAdapterName
@@ -105,6 +108,15 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        GlobalScope.launch(Dispatchers.Main) {
+            val request = PeriodicWorkRequestBuilder<LoadIngredientWorker>(
+                1, TimeUnit.SECONDS
+            ).build()
+
+            WorkManager.getInstance(applicationContext).enqueue(request)
+        }
+
 
         if (ContextCompat.checkSelfPermission(
                 applicationContext,
@@ -719,7 +731,7 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
                                             userId
                                         )
                                     }
-                                    checkExpiryAndNotify(ingredient)
+                                    //checkExpiryAndNotify(ingredient)
                                     ingredientViewModel.addIngredient(ingredient)
                                     Log.d("IngredientCategory", ingredient.ingredientCategory)
                                 }

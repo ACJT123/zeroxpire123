@@ -40,6 +40,7 @@ import com.github.mikephil.charting.utils.MPPointF
 import com.google.android.material.bottomappbar.BottomAppBar
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.ktx.oAuthCredential
 import it.xabaras.android.recyclerview.swipedecorator.RecyclerViewSwipeDecorator
 import my.edu.tarc.zeroxpire.MainActivity
 import my.edu.tarc.zeroxpire.R
@@ -142,10 +143,10 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
 
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, position: Int) {
                 val builder = AlertDialog.Builder(requireContext())
-                builder.setMessage("Are you sure you want to mark the goal as completed?").setCancelable(false)
+                builder.setMessage("Have you completed this goal?").setCancelable(false)
                     .setPositiveButton("Mark") { dialog, id ->
                         progressDialog = ProgressDialog(requireContext())
-                        progressDialog?.setMessage("Marking...")
+                        progressDialog?.setMessage("Completing...")
                         progressDialog?.setCancelable(false)
                         progressDialog?.show()
                         val position = viewHolder.adapterPosition
@@ -164,6 +165,7 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
                         requestQueue.add(jsonObjectRequest)
                         progressDialog?.dismiss()
                         loadGoal(adapter)
+                        pieChart()
                     }.setNegativeButton("Cancel") { dialog, id ->
                         dialog.dismiss()
                         adapter.notifyDataSetChanged()
@@ -235,6 +237,8 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
                         progressDialog?.dismiss()
                         adapter.notifyDataSetChanged()
                         loadGoal(adapter)
+                        val mainActivity = activity as? MainActivity
+                        mainActivity?.loadIngredient()
                     }.setNegativeButton("Cancel") { dialog, id ->
                         dialog.dismiss()
                         adapter.notifyDataSetChanged()
@@ -282,8 +286,8 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
         requestQueue.add(jsonObjectRequest)
     }
 
-
     private fun loadGoal(adapter: GoalAdapter) {
+        pieChart()
         progressDialog = ProgressDialog(requireContext())
         progressDialog?.setMessage("Loading...")
         progressDialog?.setCancelable(false)
@@ -309,9 +313,10 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
                                 val goalId = jsonGoal.getInt("goalId")
                                 val goalName = jsonGoal.getString("goalName")
                                 val targetCompletionDateString = jsonGoal.getString("targetCompletionDate")
-                                val targetCompletionDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(targetCompletionDateString)
+                                val targetCompletionDate = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).parse(targetCompletionDateString)
                                 val targetCompletionDateInMillis = targetCompletionDate?.time ?: 0L
                                 val dateCreatedString = jsonGoal.getString("dateCreated")
+
                                 val dateCreated = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(dateCreatedString)
                                 val dateCreatedInMillis = dateCreated?.time ?: 0L
                                 val completedDateString = jsonGoal.optString("completedDate")
@@ -392,8 +397,6 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
 
         pieChart.setDrawCenterText(true)
         pieChart.centerText = ""
-        pieChart.setCenterTextColor(Color.BLUE)
-        pieChart.setCenterTextSize(15f)
         pieChart.rotationAngle = 0f
         pieChart.isRotationEnabled = false
         pieChart.isHighlightPerTapEnabled = true
@@ -403,39 +406,46 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
         pieChart.setEntryLabelColor(Color.WHITE)
         pieChart.setEntryLabelTextSize(12f)
 
-        val completedGoals = goalViewModel.goalList.value?.count {
-            it.completedDate != null && it.uncompletedDate == null
-        }
+        val currentDate = Calendar.getInstance().time
+
         val expiredGoals = goalViewModel.goalList.value?.count {
-            it.completedDate == null && it.uncompletedDate != null
-        }
+            logg("ExpireGoalDateCompare: $currentDate , ${it.targetCompletionDate}")
+            it.completedDate == null && currentDate.after(it.targetCompletionDate)
+        } ?: 0
+
         val pendingGoals = goalViewModel.goalList.value?.count {
-            it.completedDate == null && it.uncompletedDate == null
-        }
+            logg("PendingGoalDateCompare: $currentDate , ${it.targetCompletionDate}")
+            it.completedDate == null && currentDate.before(it.targetCompletionDate)
+        } ?: 0
+
+        val completedGoals = goalViewModel.goalList.value?.count {
+            it.completedDate != null
+        } ?: 0
+
+        logg("Complete: $completedGoals Expired: $expiredGoals Pending: $pendingGoals")
 
         val entries: ArrayList<PieEntry> = ArrayList()
         val colors: ArrayList<Int> = ArrayList()
 
-        pendingGoals?.let {
-            if (it > 0) {
-                entries.add(PieEntry(it.toFloat(), "Active"))
-                colors.add(ContextCompat.getColor(requireContext(), R.color.textColor))
-            }
+        if (pendingGoals > 0) {
+            entries.add(PieEntry(pendingGoals.toFloat(), "Active"))
+            colors.add(ContextCompat.getColor(requireContext(), R.color.textColor))
         }
-        completedGoals?.let {
-            if (it > 0) {
-                entries.add(PieEntry(it.toFloat(), "Completed"))
-                colors.add(ContextCompat.getColor(requireContext(), R.color.btnColor))
-            }
+        if (completedGoals > 0) {
+            entries.add(PieEntry(completedGoals.toFloat(), "Completed"))
+            colors.add(ContextCompat.getColor(requireContext(), R.color.btnColor))
         }
-        expiredGoals?.let {
-            if (it > 0) {
-                entries.add(PieEntry(it.toFloat(), "Uncompleted"))
-                colors.add(ContextCompat.getColor(requireContext(), R.color.secondaryColor))
-            }
+        if (expiredGoals > 0) {
+            entries.add(PieEntry(expiredGoals.toFloat(), "Uncompleted"))
+            colors.add(ContextCompat.getColor(requireContext(), R.color.secondaryColor))
         }
 
+        logg("entries: $entries")
+
+
         val dataSet = PieDataSet(entries, "Mobile OS")
+
+        logg("dataset: $dataSet")
         dataSet.colors = colors
 
         dataSet.setDrawIcons(false)
@@ -513,6 +523,10 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
 
         val add = requireActivity().findViewById<FloatingActionButton>(R.id.fab)
         add.visibility = View.INVISIBLE
+    }
+
+    private fun logg(msg:String){
+        Log.d("GoalFragment", msg)
     }
 
 }

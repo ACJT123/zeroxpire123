@@ -42,6 +42,7 @@ import java.net.UnknownHostException
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.lifecycle.Observer
+import kotlin.math.min
 
 
 class CreateGoalFragment : Fragment(), IngredientClickListener{
@@ -133,6 +134,10 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
         val goalName = binding.enterGoalName.text.toString()
         val targetCompletionDate = selectedDate
 
+        val hour =  binding.timePicker.hour
+        val minute =  binding.timePicker.minute
+        logg("hour: $hour , minute: $minute")
+
         // Check if targetCompletionDate is null before storing the goal
         if (targetCompletionDate == null) {
             // Show an error message or any other appropriate action
@@ -148,9 +153,12 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
 
         val targetCompletionDateConverted = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
             .format(targetCompletionDate)
+
+
+
         val url = getString(R.string.url_server) + getString(R.string.url_create_goal) +
                 "?goalName=" + goalName +
-                "&targetCompletionDate=" + targetCompletionDateConverted +
+                "&targetCompletionDate=" + targetCompletionDateConverted + " $hour:$minute:00" +
                 "&userId=" + auth.currentUser?.uid
 
         Log.d("urllllllllllll", url)
@@ -434,6 +442,8 @@ class CreateGoalFragment : Fragment(), IngredientClickListener{
         Log.d("SelectedIngredients", selectedIngredientsTemporary.toString())
     }
 
-
+    private fun logg(msg:String){
+        Log.d("CreateGoalFragment", msg)
+    }
 
 }

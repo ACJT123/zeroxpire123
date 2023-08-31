@@ -36,6 +36,11 @@ class GoalRepository(private val goalDao: GoalDao){
         return goalDao.getLatestGoal()
     }
 
+    @WorkerThread
+    fun getGoalByGoalId(goalId: Int): LiveData<List<Goal>>{
+        return goalDao.getGoalByGoalId(goalId)
+    }
+
 //    @WorkerThread
 //    suspend fun updateName(id: Int, newName: String) {
 //        goalDao.updateName(id, newName)

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     tools:context=".view.goal.CreateGoalFragment">
 
     <RelativeLayout
@@ -45,44 +45,53 @@
             </LinearLayout>
         </com.google.android.material.appbar.AppBarLayout>
 
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_below="@id/appBar"
+            android:layout_height="match_parent">
+
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_below="@id/appBar"
+
             android:elevation="0dp"
             android:gravity="center_horizontal"
             android:orientation="vertical">
+
+
 
             <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
                 <TextView
-                    android:text="Select ingredient that you want to clear."
-                    android:textStyle="bold"
-                    android:layout_marginTop="10dp"
-                    android:layout_marginStart="20dp"
                     android:id="@+id/numOfSelectedIngredientsTextView"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="10dp"
+                    android:text="Select ingredient that you want to clear."
+                    android:textStyle="bold" />
 
                 <androidx.constraintlayout.widget.ConstraintLayout
-                    android:layout_below="@id/numOfSelectedIngredientsTextView"
-                    android:layout_gravity="center"
-                    android:visibility="visible"
                     android:id="@+id/noIngredientHasRecordedLayout"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
+                    android:layout_height="wrap_content"
+                    android:layout_below="@id/numOfSelectedIngredientsTextView"
+                    android:layout_gravity="center"
+                    android:visibility="visible">
 
                     <ImageView
-                        android:layout_marginTop="40dp"
                         android:id="@+id/image"
                         android:layout_width="60dp"
                         android:layout_height="60dp"
-                        app:layout_constraintStart_toStartOf="parent"
+                        android:layout_marginTop="40dp"
+                        android:src="@drawable/grocery"
                         app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintTop_toTopOf="parent"
-                        android:src="@drawable/grocery" />
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent" />
 
                     <TextView
                         android:id="@+id/noIngredientHasRecordedLayoutTextView"
@@ -101,22 +110,22 @@
                 </androidx.constraintlayout.widget.ConstraintLayout>
 
                 <androidx.recyclerview.widget.RecyclerView
-                    android:layout_marginStart="20dp"
-                    android:layout_marginEnd="20dp"
                     android:id="@+id/selectedIngredientRecyclerViewGoal"
                     android:layout_width="match_parent"
                     android:layout_height="150dp"
+                    android:layout_marginStart="20dp"
                     android:layout_marginTop="40dp"
+                    android:layout_marginEnd="20dp"
                     android:scrollbars="vertical"
                     tools:listitem="@layout/card_view_design" />
 
             </RelativeLayout>
 
             <Button
-                android:layout_marginTop="20dp"
                 android:id="@+id/addIngredientDialogBtn"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
                 android:text="Select Ingredient"/>
 
             <androidx.constraintlayout.widget.ConstraintLayout
@@ -153,31 +162,13 @@
             </androidx.constraintlayout.widget.ConstraintLayout>
 
 
-<!--            <TextView-->
-<!--                android:id="@+id/goalDetailsTextView"-->
-<!--                android:layout_width="wrap_content"-->
-<!--                android:layout_height="wrap_content"-->
-<!--                android:layout_gravity="start"-->
-<!--                android:layout_marginStart="20dp"-->
-<!--                android:layout_marginTop="30dp"-->
-<!--                android:text="Goal Details"-->
-<!--                android:textSize="16sp"-->
-<!--                android:visibility="visible" />-->
-
-            <!--            <View-->
-            <!--                android:layout_width="85dp"-->
-            <!--                android:layout_height="1dp"-->
-            <!--                android:layout_marginStart="20dp"-->
-            <!--                android:background="@color/textColor"-->
-            <!--                android:layout_gravity="start"/>-->
-
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/enterGoalNameLayout"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_width="340dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
                 android:layout_marginStart="20dp"
+                android:layout_marginTop="20dp"
                 android:layout_marginEnd="20dp"
 
                 android:hint="@string/goal_name"
@@ -213,62 +204,15 @@
 
             </com.google.android.material.textfield.TextInputLayout>
 
-<!--            <androidx.constraintlayout.widget.ConstraintLayout-->
-<!--                android:id="@+id/targetNumLayout"-->
-<!--                android:layout_width="match_parent"-->
-<!--                android:layout_height="30dp"-->
-<!--                android:layout_marginTop="20dp"-->
-<!--                android:visibility="visible">-->
 
-<!--                <TextView-->
-<!--                    android:layout_width="wrap_content"-->
-<!--                    android:layout_height="wrap_content"-->
-<!--                    android:layout_marginStart="20dp"-->
-<!--                    android:text="Target number of Ingredients"-->
-<!--                    android:textSize="16sp"-->
-<!--                    app:layout_constraintBottom_toBottomOf="parent"-->
-<!--                    app:layout_constraintStart_toStartOf="parent"-->
-<!--                    app:layout_constraintTop_toTopOf="parent" />-->
 
-<!--                <androidx.constraintlayout.widget.Guideline-->
-<!--                    android:id="@+id/guideline"-->
-<!--                    android:layout_width="wrap_content"-->
-<!--                    android:layout_height="wrap_content"-->
-<!--                    android:orientation="vertical"-->
-<!--                    app:layout_constraintGuide_begin="270dp" />-->
-
-<!--                <Button-->
-<!--                    android:id="@+id/decBtn"-->
-<!--                    android:layout_width="25dp"-->
-<!--                    android:layout_height="25dp"-->
-<!--                    android:background="@drawable/baseline_remove_24"-->
-<!--                    android:backgroundTint="@color/transparent"-->
-<!--                    app:layout_constraintBottom_toBottomOf="parent"-->
-<!--                    app:layout_constraintStart_toStartOf="@id/guideline"-->
-<!--                    app:layout_constraintTop_toTopOf="parent" />-->
-
-<!--                <TextView-->
-<!--                    android:id="@+id/qty"-->
-<!--                    android:layout_width="wrap_content"-->
-<!--                    android:layout_height="wrap_content"-->
-<!--                    android:layout_marginStart="20dp"-->
-<!--                    android:text="0"-->
-<!--                    app:layout_constraintBottom_toBottomOf="parent"-->
-<!--                    app:layout_constraintStart_toEndOf="@id/decBtn"-->
-<!--                    app:layout_constraintTop_toTopOf="parent" />-->
-
-<!--                <Button-->
-<!--                    android:id="@+id/incBtn"-->
-<!--                    android:layout_width="25dp"-->
-<!--                    android:layout_height="25dp"-->
-<!--                    android:layout_marginStart="20dp"-->
-<!--                    android:background="@drawable/baseline_add_24"-->
-<!--                    android:backgroundTint="@color/transparent"-->
-<!--                    app:layout_constraintBottom_toBottomOf="parent"-->
-<!--                    app:layout_constraintStart_toEndOf="@id/qty"-->
-<!--                    app:layout_constraintTop_toTopOf="parent" />-->
-
-<!--            </androidx.constraintlayout.widget.ConstraintLayout>-->
+            <TimePicker
+                android:id="@+id/timePicker"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:layout_marginTop="20dp"
+                android:timePickerMode="spinner"/>
 
 
             <Button
@@ -276,7 +220,8 @@
                 android:layout_width="250dp"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
-                android:layout_marginTop="30dp"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="60dp"
                 android:backgroundTint="@color/btnColor"
                 android:text="@string/create"
                 android:visibility="visible" />
@@ -284,6 +229,12 @@
 
         </LinearLayout>
 
+
+        </ScrollView>
+
     </RelativeLayout>
+
+
+
 
 </FrameLayout>

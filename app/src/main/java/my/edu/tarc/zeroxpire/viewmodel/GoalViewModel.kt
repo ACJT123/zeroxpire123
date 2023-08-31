@@ -44,6 +44,10 @@ class GoalViewModel(application: Application) : AndroidViewModel(application) {
         return repository.getLatestGoal()
     }
 
+    fun getGoalByGoalId(goalId: Int): LiveData<List<Goal>> {
+        return repository.getGoalByGoalId(goalId)
+    }
+
 
 //    fun updateGoalName(id: Int, newName: String) = viewModelScope.launch {
 //        repository.updateName(id, newName)

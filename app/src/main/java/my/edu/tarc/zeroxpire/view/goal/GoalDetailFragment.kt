@@ -6,7 +6,9 @@ import android.app.ProgressDialog
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
+import android.text.Editable
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -14,6 +16,7 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -41,16 +44,19 @@ import com.google.firebase.auth.FirebaseAuth
 import it.xabaras.android.recyclerview.swipedecorator.RecyclerViewSwipeDecorator
 import my.edu.tarc.zeroxpire.MainActivity
 import my.edu.tarc.zeroxpire.WebDB
+import my.edu.tarc.zeroxpire.model.Goal
 import my.edu.tarc.zeroxpire.model.Ingredient
 import my.edu.tarc.zeroxpire.viewmodel.GoalViewModel
 import my.edu.tarc.zeroxpire.viewmodel.IngredientViewModel
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
 import java.util.*
 
 class GoalDetailFragment : Fragment(), IngredientClickListener {
 
     private lateinit var binding: FragmentGoalDetailBinding
     private var originalName: String? = null
-    private var selectedDate: Long? = null // Variable to store the selected date as a Long value
+    private var selectedDate: Date? = null // Variable to store the selected date as a Long value
     private var progressDialog: ProgressDialog? = null
 
     private lateinit var requestQueue: RequestQueue
@@ -88,13 +94,18 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
         return binding.root
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
 
         ///initialize things
         auth = FirebaseAuth.getInstance()
-        adapter = IngredientAdapter(this, goalViewModel)
+        adapter = IngredientAdapter(object : IngredientClickListener {
+            override fun onIngredientClick(ingredient: Ingredient) {
+                // Do nothing here, as this is a dummy click listener
+            }
+        }, goalViewModel)
         bottomSheetIngredientAdapter = IngredientAdapter(this, goalViewModel)
 
         //recyclerview stuff
@@ -158,19 +169,20 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
         swipeToDeleteExistingIngredientList()
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun setFragmentResultsFunctions(){
         // Set fragment result listeners to receive data from other fragments
-        setFragmentResultListener("requestName") { _, bundle ->
-            val result = bundle.getString("name")
-            originalName = result
-            binding.enterIngredientName.setText(originalName)
-        }
+//        setFragmentResultListener("requestName") { _, bundle ->
+//            val result = bundle.getString("name")
+//            originalName = result
+//            binding.enterIngredientName.setText(originalName)
+//        }
 
-        setFragmentResultListener("requestDate") { _, bundle ->
-            val dateString = bundle.getString("date")
-            selectedDate = parseDateStringToLong(dateString)
-            binding.chooseTargetCompletionDate.setText(dateString)
-        }
+//        setFragmentResultListener("requestDate") { _, bundle ->
+//            val dateString = bundle.getString("date")
+//            selectedDate = parseDateStringToLong(dateString)
+//            binding.chooseTargetCompletionDate.setText(dateString)
+//        }
 
         setFragmentResultListener("requestId") { _, bundle ->
             val goalIdd = bundle.getInt("id")
@@ -189,8 +201,42 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
                         Log.d("GoalDetailFragment: ingredientWithGoalId", ingredients.toString())
                         Log.d("GoalDetailFragment: finalSelectionList", finalSelectionList.toString())
                     })
+
+                val goal = goalViewModel.goalList.value?.filter {
+                    it.goalId == goalId
+                }
+
+                logg("goal: $goal")
+                val name = goal?.get(0)?.goalName
+                val date = goal?.get(0)?.targetCompletionDate
+
+                logg("targetCompletionDate: $date")
+
+                binding.apply {
+                    enterGoalName.text = Editable.Factory.getInstance().newEditable(name)
+                    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                    val formattedDate = sdf.format(date!!)
+                    chooseTargetCompletionDate.text =Editable.Factory.getInstance().newEditable(formattedDate)
+
+                    val formatter = DateTimeFormatter.ofPattern("EEE MMM dd HH:mm:ss 'GMT'XXX yyyy", Locale.US)
+                    val offsetDateTime = OffsetDateTime.parse(date.toString(), formatter)
+
+                    val hour = offsetDateTime.hour
+                    val minute = offsetDateTime.minute
+
+                    logg("Hour: $hour")     // Hour: 10
+                    logg("Minute: $minute") // Minute: 0
+
+                    timePicker.hour = hour
+                    timePicker.minute = minute
+                }
+
             }
         }
+    }
+
+    private fun logg(msg:String){
+        Log.d("GoalDetailFragment", msg)
     }
 
     private fun showBottomSheetDialog() {
@@ -250,41 +296,26 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
         }
     }
     private fun showDatePickerDialog() {
-        val calendar = Calendar.getInstance()
-
-        val year = calendar.get(Calendar.YEAR)
-        val month = calendar.get(Calendar.MONTH)
-        val dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH)
+        val currentDate = Calendar.getInstance()
+        val year = currentDate.get(Calendar.YEAR)
+        val month = currentDate.get(Calendar.MONTH)
+        val dayOfMonth = currentDate.get(Calendar.DAY_OF_MONTH)
 
         val datePickerDialog = DatePickerDialog(
             requireContext(),
             R.style.CustomDatePickerDialog,
             { _, year, month, dayOfMonth ->
-                val selectedCalendar = Calendar.getInstance().apply {
-                    set(Calendar.YEAR, year)
-                    set(Calendar.MONTH, month)
-                    set(Calendar.DAY_OF_MONTH, dayOfMonth)
-                }
-                selectedDate = selectedCalendar.timeInMillis
-                val dateString = formatDateToStringFromLong(selectedDate)
-                binding.chooseTargetCompletionDate.setText(dateString)
+                val calendar = Calendar.getInstance()
+                calendar.set(year, month, dayOfMonth, 0, 0, 0)
+                selectedDate = calendar.time
+                val selectedDateString =
+                    SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(selectedDate)
+                binding.chooseTargetCompletionDate.setText(selectedDateString)
             },
             year,
             month,
             dayOfMonth
         )
-
-        // Set the selected date as the default date
-        if (selectedDate != null) {
-            val selectedCalendar = Calendar.getInstance()
-            selectedCalendar.timeInMillis = selectedDate!!
-
-            val selectedYear = selectedCalendar.get(Calendar.YEAR)
-            val selectedMonth = selectedCalendar.get(Calendar.MONTH)
-            val selectedDayOfMonth = selectedCalendar.get(Calendar.DAY_OF_MONTH)
-
-            datePickerDialog.updateDate(selectedYear, selectedMonth, selectedDayOfMonth)
-        }
 
         datePickerDialog.show()
     }
@@ -344,7 +375,7 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
         progressDialog?.setCancelable(false)
         progressDialog?.show()
 
-        //updateGoalDetails()
+        updateGoalDetails()
 
         val urlClear = getString(R.string.url_server) + getString(R.string.url_clearGoalIdForIngredient_goal) + "?goalId=" + goalId
         val jsonObjectRequestClear = JsonObjectRequest(
@@ -424,14 +455,26 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
     }
 
     private fun updateGoalDetails() {
+        val goalName = binding.enterGoalName.text.toString()
+        var targetCompletionDate = selectedDate
+        val hour =  binding.timePicker.hour
+        val minute =  binding.timePicker.minute
 
-        val urlUpdateGoalDetails =
-            getString(R.string.url_server) + getString(R.string.url_update_goal) +
-                    "?goalId=" + goalId + "&goalName=" + binding.enterIngredientName.text.toString() + "&targetCompletionDate=" + SimpleDateFormat(
-                "yyyy-MM-dd",
-                Locale.getDefault()
-            )
-                .format(binding.chooseTargetCompletionDate.text)
+        if (targetCompletionDate == null) {
+            val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+            targetCompletionDate = sdf.parse(binding.chooseTargetCompletionDate.text.toString())
+        }
+
+        val targetCompletionDateConverted = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            .format(targetCompletionDate)
+
+
+        val urlUpdateGoalDetails = getString(R.string.url_server) + getString(R.string.url_update_goal) +
+                "?goalId=" + goalId +
+                "&goalName=" + goalName +
+                "&targetCompletionDate=" + targetCompletionDateConverted + " $hour:$minute:00"
+
+        logg("urlUpdateGoalDetails: $urlUpdateGoalDetails")
 
 
         val jsonObjectRequest = JsonObjectRequest(

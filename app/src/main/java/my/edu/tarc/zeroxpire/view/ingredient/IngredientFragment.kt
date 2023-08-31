@@ -135,14 +135,14 @@ class IngredientFragment : Fragment(), IngredientClickListener {
 
         //loadIngredient(adapter)
 
-        createNotificationChannel()
+        //createNotificationChannel()
 
 
 
         ingredientViewModel.ingredientList.observe(viewLifecycleOwner, Observer { ingredients ->
             logg("ingredients: $ingredients")
             adapter.setIngredient(ingredients)
-            reminder(ingredients)
+            //reminder(ingredients)
         })
 
         binding.recyclerview.layoutManager = LinearLayoutManager(requireContext())

@@ -1,6 +1,7 @@
 package my.edu.tarc.zeroxpire.adapters
 
 import android.os.Build
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -18,9 +19,12 @@ import my.edu.tarc.zeroxpire.model.Goal
 import my.edu.tarc.zeroxpire.model.Ingredient
 import java.text.SimpleDateFormat
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 class GoalAdapter(private val clickListener: GoalClickListener) : RecyclerView.Adapter<GoalAdapter.ViewHolder>() {
     private var goalList = emptyList<Goal>()
@@ -45,18 +49,39 @@ class GoalAdapter(private val clickListener: GoalClickListener) : RecyclerView.A
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val goal = goalList[position]
         holder.textViewGoalName.text = goal.goalName
-//        val targetCompletionDate: Date = goal.targetCompletionDate
-//        val dateFormatter = SimpleDateFormat("yyyy-MM-dd")
-//        val formattedDate = targetCompletionDate.let { dateFormatter.format(it) } ?: "Date Not Set"
+        val currentDate = Calendar.getInstance().time
+        val targetCompletionDate = goal.targetCompletionDate
 
-        val targetCompletionDate: LocalDate? = goal.targetCompletionDate.toInstant()
-            ?.atZone(ZoneId.systemDefault())?.toLocalDate()
+        val differenceMillis = targetCompletionDate.time - currentDate.time
+        val daysDifference = TimeUnit.MILLISECONDS.toDays(differenceMillis)
 
-        val currentDate: LocalDate = LocalDate.now()
-        val absoluteDaysLeft: Long = ChronoUnit.DAYS.between(currentDate, targetCompletionDate)
-
+        val isCompleted: Boolean = goal.completedDate != null
         val daysLeftText: String = when {
-            absoluteDaysLeft < 0 -> {
+            isCompleted -> {
+                holder.textViewDaysLeft.setTextColor(getColor(holder.itemView.context, R.color.btnColor))
+                holder.textViewGoalName.setTextColor(getColor(holder.itemView.context, R.color.btnColor))
+                Glide.with(holder.itemView.context)
+                    .load(R.drawable.completed_goal)
+                    .into(holder.goalStateImage)
+                "Completed"
+            }
+            daysDifference >= 0L && currentDate.before(targetCompletionDate) -> {
+                holder.textViewDaysLeft.setTextColor(getColor(holder.itemView.context, R.color.textColor))
+                holder.textViewGoalName.setTextColor(getColor(holder.itemView.context, R.color.textColor))
+                Glide.with(holder.itemView.context)
+                    .load(R.drawable.active_goal)
+                    .into(holder.goalStateImage)
+                when (daysDifference) {
+                    0L -> {
+                        val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
+                        val formattedTime = timeFormat.format(targetCompletionDate)
+                        "Due today at $formattedTime"
+                    }
+                    1L -> "Due tomorrow"
+                    else -> "Due in $daysDifference days"
+                }
+            }
+            else -> {
                 holder.textViewDaysLeft.setTextColor(getColor(holder.itemView.context, R.color.secondaryColor))
                 holder.textViewGoalName.setTextColor(getColor(holder.itemView.context, R.color.secondaryColor))
                 Glide.with(holder.itemView.context)
@@ -64,48 +89,15 @@ class GoalAdapter(private val clickListener: GoalClickListener) : RecyclerView.A
                     .into(holder.goalStateImage)
                 "Overdue"
             }
-            absoluteDaysLeft == 0L -> {
-                holder.textViewDaysLeft.setTextColor(getColor(holder.itemView.context, R.color.textColor))
-                holder.textViewGoalName.setTextColor(getColor(holder.itemView.context, R.color.textColor))
-                Glide.with(holder.itemView.context)
-                    .load(R.drawable.active_goal)
-                    .into(holder.goalStateImage)
-                "Due today"
-            }
-            else -> {
-                holder.textViewDaysLeft.setTextColor(getColor(holder.itemView.context, R.color.textColor))
-                holder.textViewGoalName.setTextColor(getColor(holder.itemView.context, R.color.textColor))
-                Glide.with(holder.itemView.context)
-                    .load(R.drawable.active_goal)
-                    .into(holder.goalStateImage)
-                when (absoluteDaysLeft) {
-                    1L -> "Due tomorrow"
-                    else -> "Due in $absoluteDaysLeft days"
-                }
-            }
         }
 
-        val isCompleted: Boolean = goal.completedDate != null
-
-        holder.textViewDaysLeft.text = if(isCompleted){
-            holder.textViewDaysLeft.setTextColor(getColor(holder.itemView.context, R.color.btnColor))
-            holder.textViewGoalName.setTextColor(getColor(holder.itemView.context, R.color.btnColor))
-            Glide.with(holder.itemView.context)
-                .load(R.drawable.completed_goal)
-                .into(holder.goalStateImage)
-            "Completed"
-        }
-        else{
-            daysLeftText
-        }
+        holder.textViewDaysLeft.text = daysLeftText
 
         holder.itemView.setOnClickListener {
             clickListener.onGoalClick(goal)
         }
-//        holder.textViewDaysLeft.text = "Target Completion Date: $formattedDate"
-
-        // Set other data to the views as needed
     }
+
 
     override fun getItemCount(): Int {
         return goalList.size
@@ -118,4 +110,9 @@ class GoalAdapter(private val clickListener: GoalClickListener) : RecyclerView.A
     fun getPosition(goal: Goal): Int{
         return goalList.indexOf(goal)
     }
+
+    private fun logg(msg:String){
+        Log.d("GoalAdapter", msg)
+    }
+
 }

@@ -23,6 +23,9 @@ interface GoalDao {
     @Query("SELECT * FROM Goal ORDER BY dateCreated DESC, goalId DESC LIMIT 1")
     fun getLatestGoal(): Goal?
 
+    @Query("SELECT * FROM Goal WHERE goalId = :goalId")
+    fun getGoalByGoalId(goalId: Int): LiveData<List<Goal>>
+
 
 
 //    @Transaction
