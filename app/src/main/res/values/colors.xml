@@ -9,10 +9,11 @@
     <color name="white">#FFFFFFFF</color>
     <color name="transparent">#00FFFFFF</color>
     <color name="textColor">#3C3C3C</color>
+    <color name="textColorDisable">#1AAFAFAF</color>
     <color name="bgColor">#FFFFFFFF</color>
     <color name="secondaryColor">#EAA362</color>
     <color name="btnColor">#7E9F5E</color>
-    <color name="btnColorDisabled">#C37E9F5E</color>
+    <color name="btnColorDisabled">#6E7E9F5E</color>
     <color name="chip_selected_color">#FF5733</color>
     <color name="chip_unselected_color">#E0E0E0</color>
     <color name="favoriteBtnColor">#FD5C70</color>

@@ -125,9 +125,8 @@ Last updated: [Date]\n
         <item>Fruits</item>
         <item>Meat</item>
         <item>Seafood</item>>
-        <item>Sauces</item>
-        <item>Canned &amp; Preserved Foods</item>
         <item>Eggs Products</item>
+        <item>Other</item>
     </string-array>
     <string-array name="filter_options">
         <item>Type</item>
@@ -183,6 +182,7 @@ Last updated: [Date]\n
     <string name="send">Send</string>
     <string name="bookmarks">Bookmarks</string>
     <string name="no_comments">No comments found</string>
+    <string name="default_notification_channel_id">channel_id</string>
 
 
 </resources>

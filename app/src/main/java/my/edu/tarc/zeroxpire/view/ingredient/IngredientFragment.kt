@@ -25,6 +25,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.setFragmentResult
 import androidx.lifecycle.Observer
+import androidx.lifecycle.map
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -140,10 +141,19 @@ class IngredientFragment : Fragment(), IngredientClickListener {
 
 
         ingredientViewModel.ingredientList.observe(viewLifecycleOwner, Observer { ingredients ->
-            logg("ingredients: $ingredients")
-            adapter.setIngredient(ingredients)
-            //reminder(ingredients)
+            goalViewModel.goalList.observe(viewLifecycleOwner, Observer { goals ->
+                val unconsumedIngredients = ingredients.filter { ingredient ->
+                    val goal = goals.find { it.goalId == ingredient.ingredientGoalId }
+                    goal?.completedDate == null
+                }
+
+                logg("unconsumedIngredients: $unconsumedIngredients")
+                adapter.setIngredient(unconsumedIngredients)
+
+
+            })
         })
+
 
         binding.recyclerview.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerview.adapter = adapter
@@ -596,7 +606,7 @@ class IngredientFragment : Fragment(), IngredientClickListener {
         val onBackPressedCallback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 val builder = AlertDialog.Builder(requireContext())
-                builder.setMessage("Are you sure you want to Exit?").setCancelable(false)
+                builder.setMessage("Are you sure you want to Exit the app?").setCancelable(false)
                     .setPositiveButton("Exit") { dialog, id ->
                         requireActivity().finish()
                     }.setNegativeButton("Cancel") { dialog, id ->

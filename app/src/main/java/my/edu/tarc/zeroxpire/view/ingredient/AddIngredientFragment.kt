@@ -217,15 +217,15 @@ class AddIngredientFragment : Fragment() {
 
     @SuppressLint("SimpleDateFormat")
     private fun storeIngredient() {
-        progressDialog = ProgressDialog(requireContext())
-        progressDialog?.setMessage("Adding...")
-        progressDialog?.setCancelable(false)
-        progressDialog?.show()
         val ingredientName = binding.enterIngredientName.text.toString()
         val ingredientCategory = binding.chooseCategory.text.toString()
         Log.d("ingredientCategory", ingredientCategory)
 
-        if (ingredientName.isNotEmpty() && selectedDate != null) {
+        if (ingredientName.isNotEmpty() && selectedDate != null && checkExist(ingredientName)) {
+            progressDialog = ProgressDialog(requireContext())
+            progressDialog?.setMessage("Adding...")
+            progressDialog?.setCancelable(false)
+            progressDialog?.show()
             // Get the current date
             val currentDate = Date()
 
@@ -288,8 +288,28 @@ class AddIngredientFragment : Fragment() {
                 binding.chooseExpiryDateLayout.error = "Please select the expiry date"
                 binding.chooseExpiryDate.requestFocus()
             }
+            if(!checkExist(ingredientName)){
+                binding.enterIngredientName.error = "Ingredient has already exists, choose other name."
+                binding.enterIngredientName.requestFocus()
+            }
         }
     }
+
+    private fun checkExist(name: String): Boolean {
+        val ingredientNameList = mutableListOf<Ingredient>()
+
+        ingredientViewModel.ingredientList.observe(viewLifecycleOwner, androidx.lifecycle.Observer { ingredients ->
+            ingredients.map {
+                if(it.ingredientName == name){
+                    ingredientNameList.add(it)
+                }
+            }
+        })
+
+        return ingredientNameList.size == 0
+
+    }
+
 
     private fun isNetworkAvailable(): Boolean {
         val connectivityManager =

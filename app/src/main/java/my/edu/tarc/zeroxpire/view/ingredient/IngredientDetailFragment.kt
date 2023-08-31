@@ -7,8 +7,6 @@ import android.app.ProgressDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -30,17 +28,15 @@ import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
-import my.edu.tarc.zeroxpire.MainActivity
 import my.edu.tarc.zeroxpire.R
 import my.edu.tarc.zeroxpire.WebDB
 import my.edu.tarc.zeroxpire.databinding.FragmentIngredientDetailBinding
+import my.edu.tarc.zeroxpire.model.Ingredient
 import my.edu.tarc.zeroxpire.viewmodel.IngredientViewModel
 import org.json.JSONObject
 import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.math.exp
-import kotlin.math.log
 
 class IngredientDetailFragment : Fragment() {
     private lateinit var binding: FragmentIngredientDetailBinding
@@ -126,33 +122,33 @@ class IngredientDetailFragment : Fragment() {
                 .into(binding.ingredientImage)
         }
 
-        binding.enterIngredientName.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+//        binding.enterIngredientName.addTextChangedListener(object : TextWatcher {
+//            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+//
+//            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+//
+//            override fun afterTextChanged(s: Editable?) {
+//                val newName = s?.toString()
+//                val isNameChanged = newName != originalName
+//                val isDateChanged = selectedDate != null
+//
+//                binding.saveBtn.isEnabled = isNameChanged || isDateChanged
+//            }
+//        })
 
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-
-            override fun afterTextChanged(s: Editable?) {
-                val newName = s?.toString()
-                val isNameChanged = newName != originalName
-                val isDateChanged = selectedDate != null
-
-                binding.saveBtn.isEnabled = isNameChanged || isDateChanged
-            }
-        })
-
-        binding.chooseExpiryDate.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-
-            override fun afterTextChanged(s: Editable?) {
-                val newDate = parseDateStringToLong(s?.toString())
-                val isDateChanged = newDate != selectedDate
-                val isNameChanged = binding.enterIngredientName.text.toString() != originalName
-
-                binding.saveBtn.isEnabled = isNameChanged || isDateChanged
-            }
-        })
+//        binding.chooseExpiryDate.addTextChangedListener(object : TextWatcher {
+//            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+//
+//            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+//
+//            override fun afterTextChanged(s: Editable?) {
+//                val newDate = parseDateStringToLong(s?.toString())
+//                val isDateChanged = newDate != selectedDate
+//                val isNameChanged = binding.enterIngredientName.text.toString() != originalName
+//
+//                binding.saveBtn.isEnabled = isNameChanged || isDateChanged
+//            }
+//        })
 
         showCategory()
 
@@ -166,17 +162,16 @@ class IngredientDetailFragment : Fragment() {
         }
 
         binding.saveBtn.setOnClickListener {
-            progressDialog = ProgressDialog(requireContext())
-            progressDialog?.setMessage("Updating...")
-            progressDialog?.setCancelable(false)
-            progressDialog?.show()
             val newName = binding.enterIngredientName.text.toString()
             val newDate = selectedDate
             val newExpiryDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                 .format(newDate)
 
-            if(newName.isNotEmpty()){
-//                if(checkUpdate(newName, newDate, fileUri)){
+            if(newName.isNotEmpty() && checkExist(newName)){
+                progressDialog = ProgressDialog(requireContext())
+                progressDialog?.setMessage("Updating...")
+                progressDialog?.setCancelable(false)
+                progressDialog?.show()
                 //todo: only workable if change all 3 fields
 
                         val storage = Firebase.storage("gs://zeroxpire.appspot.com")
@@ -201,21 +196,29 @@ class IngredientDetailFragment : Fragment() {
                                         storeIngredientToDB(newName, newExpiryDate, imageUrl)
                                     }
                                 }
+
+
+                                progressDialog!!.dismiss()
+                                findNavController().popBackStack()
+
                             }.addOnFailureListener {
                                 logg("cannot delete")
                             }
                         }
                 }
-//            }
             else{
-                binding.enterIngredientName.error = "Please enter the ingredient's name"
-                binding.enterIngredientName.requestFocus()
+                if(newName.isEmpty()){
+                    binding.enterIngredientName.error = "Please enter the ingredient's name"
+                    binding.enterIngredientName.requestFocus()
+                }
+                if(!checkExist(newName)){
+                    binding.enterIngredientName.error = "Ingredient has already exists, choose other name."
+                    binding.enterIngredientName.requestFocus()
+                }
+
+
+                return@setOnClickListener
             }
-
-            progressDialog!!.dismiss()
-            findNavController().popBackStack()
-
-
         }
 
         binding.deleteBtn.setOnClickListener {
@@ -238,9 +241,19 @@ class IngredientDetailFragment : Fragment() {
         }
     }
 
-    private fun checkUpdate(newName: String, newExpiryDate: Long?, fileUri: Uri?): Boolean {
+    private fun checkExist(newName: String): Boolean {
+        val ingredientNameList = mutableListOf<Ingredient>()
 
-        return newName != originalName || newExpiryDate != originalSelectedDate || fileUri != originalImage
+        ingredientViewModel.ingredientList.observe(viewLifecycleOwner, androidx.lifecycle.Observer { ingredients ->
+            ingredients.map {
+                if(it.ingredientName == newName){
+                    ingredientNameList.add(it)
+                }
+            }
+        })
+
+        return ingredientNameList.size == 0
+
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -254,10 +267,31 @@ class IngredientDetailFragment : Fragment() {
         }
     }
 
-    private fun showCategory(){
+    private fun showCategory() {
         val ingredientCategories = resources.getStringArray(R.array.ingredient_categories)
         val adapter = ArrayAdapter(requireContext(), R.layout.category_list, ingredientCategories)
         binding.chooseCategory.setAdapter(adapter)
+
+        var category: String? = null
+        var index: Int? = null
+        ingredientViewModel.ingredientList.observe(viewLifecycleOwner, androidx.lifecycle.Observer { ingredients ->
+            ingredients.map {
+                if (ingredientId == it.ingredientId) {
+                    category = it.ingredientCategory
+                }
+            }
+            logg("category: $category")
+
+            // Find the index of the preselected category in the ingredientCategories array
+            val preselectedIndex = ingredientCategories.indexOf(category)
+            index = preselectedIndex
+            logg("preselectedIndex: $preselectedIndex")
+            if (preselectedIndex != -1) {
+                // Set the selection programmatically
+                binding.chooseCategory.setText(ingredientCategories[preselectedIndex], false)
+                index = preselectedIndex
+            }
+        })
 
         // Set an item click listener to handle the selected category
         binding.chooseCategory.onItemClickListener = AdapterView.OnItemClickListener { _, _, position, _ ->
@@ -271,10 +305,12 @@ class IngredientDetailFragment : Fragment() {
         }
     }
 
+
     private fun storeIngredientToDB(newName: String, newDate: String, imageUrl: String) {
         val url = "https:/zeroxpire.000webhostapp.com/api/ingredient/update.php" +"?ingredientName=" + newName +
                 "&expiryDate=" + newDate+ "&ingredientImage=" + URLEncoder.encode(
             imageUrl.substringAfterLast("%2F"), "UTF-8") +
+                "&ingredientCategory=" + binding.chooseCategory.text.toString() +
                 "&ingredientId=" + ingredientId
         logg("newImageUrl: $url")
 

@@ -81,6 +81,8 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
     private lateinit var bottomSheetView: View
     private lateinit var recyclerView: RecyclerView
 
+    private var isCompleted = false
+
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -209,6 +211,7 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
                 logg("goal: $goal")
                 val name = goal?.get(0)?.goalName
                 val date = goal?.get(0)?.targetCompletionDate
+                val completedDate = goal?.get(0)?.completedDate
 
                 logg("targetCompletionDate: $date")
 
@@ -229,6 +232,19 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
 
                     timePicker.hour = hour
                     timePicker.minute = minute
+                }
+
+                if(completedDate != null){
+                    isCompleted = true
+                    binding.apply {
+                        enterGoalNameLayout.isEnabled = false
+                        chooseTargetCompletionDateLayout.isEnabled = false
+                        timePicker.isEnabled = false
+                        recyclerView.isEnabled = false
+                        saveBtn.visibility = View.GONE
+                        addIngredientsBtn.visibility = View.GONE
+                        header.text = "This goal has already completed"
+                    }
                 }
 
             }
@@ -582,6 +598,17 @@ class GoalDetailFragment : Fragment(), IngredientClickListener {
                 super.onChildDraw(
                     c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive
                 )
+            }
+
+            override fun getSwipeDirs(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder
+            ): Int {
+                return if (!isCompleted) {
+                    super.getSwipeDirs(recyclerView, viewHolder) // Allow swipe
+                } else {
+                    0 // Disable swipe
+                }
             }
         }
         val itemTouchHelper = ItemTouchHelper(itemTouchHelperCallback)

@@ -7,6 +7,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.core.os.bundleOf
 import androidx.fragment.app.setFragmentResult
 import androidx.lifecycle.lifecycleScope
@@ -111,6 +112,26 @@ class ProfileFragment : Fragment() {
             alert.show()
         }
 
+        navigateBack()
+    }
+
+    private fun navigateBack() {
+        val onBackPressedCallback = object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                val builder = AlertDialog.Builder(requireContext())
+                builder.setMessage("Are you sure you want to Exit the app?").setCancelable(false)
+                    .setPositiveButton("Exit") { dialog, id ->
+                        requireActivity().finish()
+                    }.setNegativeButton("Cancel") { dialog, id ->
+                        dialog.dismiss()
+                    }
+                val alert = builder.create()
+                alert.show()
+            }
+        }
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner, onBackPressedCallback
+        )
     }
 
     private fun deleteAcc() {

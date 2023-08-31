@@ -59,22 +59,12 @@ class IngredientAdapter(
             "Vegetables" -> R.drawable.vegetable
             "Fruits" -> R.drawable.fruits
             "Seafood" -> R.drawable.seafood
-            "Sauces" -> R.drawable.messi
-            "Canned & Preserved Foods" ->  R.drawable.dairy
-            "Eggs" -> R.drawable.herbs
+            //TODO
+            "Eggs Products" -> R.drawable.herbs
+            //TODO
+            "Other" -> R.drawable.herbs
 
-//            <item>Vegetables</item>
-//                    <item>Fruits</item>
-//                    <item>Meat</item>
-//                    <item>Seafood</item>>
-//            <item>Condiments &amp; Sauces</item>
-//                    <item>Canned &amp; Preserved Foods</item>
-//                <item>Eggs Products</item>
-            // Add other cases here for different categories
-
-            else -> {
-                R.drawable.messi
-            }
+            else -> {}
         }
         Glide.with(holder.itemView.context)
             .load(categoryImageResource)
@@ -111,6 +101,24 @@ class IngredientAdapter(
         } else {
             holder.textViewDaysLeft.text = "Expiration Date Not Set"
         }
+
+        val goal = goalViewModel.goalList.value
+        goal?.map {
+            if(it.goalId == ingredient.ingredientGoalId){
+                if(it.completedDate != null){
+                    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                    val formattedCompletedDate = sdf.format(it.completedDate)
+                    val formattedExpiryDate = sdf.format(ingredient.expiryDate)
+
+
+                    holder.textViewExpiryDate.text = "Consumed at: $formattedCompletedDate"
+                    holder.textViewExpiryDate.setTextColor(getColor(holder.itemView.context, R.color.btnColor))
+                    holder.isAddedToGoalImage.visibility = View.GONE
+                    holder.textViewDaysLeft.text = "Expiry Date: ${formattedExpiryDate}"
+                }
+            }
+        }
+
 
         // Set date added
         val dateFormatter = SimpleDateFormat("d/M/yyyy")

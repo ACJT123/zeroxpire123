@@ -39,6 +39,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.card.MaterialCardView
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.messaging.FirebaseMessaging
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
@@ -109,14 +110,13 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        GlobalScope.launch(Dispatchers.Main) {
-            val request = PeriodicWorkRequestBuilder<LoadIngredientWorker>(
-                1, TimeUnit.SECONDS
-            ).build()
-
-            WorkManager.getInstance(applicationContext).enqueue(request)
-        }
-
+        FirebaseMessaging.getInstance().subscribeToTopic("discount-offers")
+            .addOnCompleteListener { task ->
+                toast("Subscribed! You will get all discount offers notifications")
+                if (!task.isSuccessful) {
+                    toast("Failed! Try again.")
+                }
+            }
 
         if (ContextCompat.checkSelfPermission(
                 applicationContext,

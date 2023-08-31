@@ -12,6 +12,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.SearchView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat
 import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
@@ -100,6 +101,8 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
 
         searchGoal(adapter)
         delete(adapter)
+        navigateBack()
+
         markAsCompleted(adapter)
 
     }
@@ -194,9 +197,42 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
                     c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive
                 )
             }
+
+            override fun getSwipeDirs(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder
+            ): Int {
+                val position = viewHolder.adapterPosition
+                val goal = adapter.getGoalAt(position)
+                return if (goal.completedDate == null) {
+                    super.getSwipeDirs(recyclerView, viewHolder) // Allow swipe
+                } else {
+                    Toast.makeText(requireContext(), "This goal has already completed", Toast.LENGTH_SHORT).show()
+                    0 // Disable swipe
+                }
+            }
         }
         val itemTouchHelper = ItemTouchHelper(itemTouchHelperCallback)
         itemTouchHelper.attachToRecyclerView(binding.goalRecyclerview)
+    }
+
+    private fun navigateBack() {
+        val onBackPressedCallback = object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                val builder = AlertDialog.Builder(requireContext())
+                builder.setMessage("Are you sure you want to Exit the app?").setCancelable(false)
+                    .setPositiveButton("Exit") { dialog, id ->
+                        requireActivity().finish()
+                    }.setNegativeButton("Cancel") { dialog, id ->
+                        dialog.dismiss()
+                    }
+                val alert = builder.create()
+                alert.show()
+            }
+        }
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner, onBackPressedCallback
+        )
     }
 
     private fun delete(adapter: GoalAdapter) {
