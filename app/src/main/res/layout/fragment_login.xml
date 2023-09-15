@@ -114,6 +114,7 @@
             android:orientation="horizontal">
 
             <CheckBox
+                android:visibility="invisible"
                 android:id="@+id/stayLoggedInCheckBox"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

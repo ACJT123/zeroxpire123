@@ -199,6 +199,9 @@ class IngredientFragment : Fragment(), IngredientClickListener {
         val meatChip = bottomSheetView.findViewById<Chip>(R.id.chipMeats)
         val fruitsChip = bottomSheetView.findViewById<Chip>(R.id.chipFruits)
         val seafoodChip = bottomSheetView.findViewById<Chip>(R.id.chipSeafood)
+        val eggProductsChip = bottomSheetView.findViewById<Chip>(R.id.chipEggProducts)
+        val othersChip = bottomSheetView.findViewById<Chip>(R.id.chipOthers)
+
         val applyBtn = bottomSheetView.findViewById<Button>(R.id.applyButton)
 
         applyBtn.setOnClickListener {
@@ -239,9 +242,6 @@ class IngredientFragment : Fragment(), IngredientClickListener {
                 filteredIngredients = filteredIngredients.filter { ingredient ->
                     ingredient.ingredientCategory == "Vegetables"
                 }
-                vegChip.setChipBackgroundColorResource(R.color.chip_selected_color)
-            } else {
-                vegChip.setChipBackgroundColorResource(R.color.chip_unselected_color)
             }
 
             if (meatChip.isChecked) {
@@ -262,6 +262,17 @@ class IngredientFragment : Fragment(), IngredientClickListener {
                 }
             }
 
+            if (eggProductsChip.isChecked) {
+                filteredIngredients = filteredIngredients.filter { ingredient ->
+                    ingredient.ingredientCategory == "Egg Products"
+                }
+            }
+
+            if (othersChip.isChecked) {
+                filteredIngredients = filteredIngredients.filter { ingredient ->
+                    ingredient.ingredientCategory == "Others"
+                }
+            }
 
             adapter.setIngredient(filteredIngredients)
             bottomSheetDialog.dismiss()

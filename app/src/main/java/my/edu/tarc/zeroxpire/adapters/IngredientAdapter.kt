@@ -58,11 +58,12 @@ class IngredientAdapter(
         val categoryImageResource = when (ingredient.ingredientCategory) {
             "Vegetables" -> R.drawable.vegetable
             "Fruits" -> R.drawable.fruits
+            "Meat" -> R.drawable.meat
             "Seafood" -> R.drawable.seafood
             //TODO
-            "Eggs Products" -> R.drawable.herbs
+            "Eggs Products" -> R.drawable.eggs_2713474
             //TODO
-            "Other" -> R.drawable.herbs
+            "Other" -> R.drawable.icons_other
 
             else -> {}
         }

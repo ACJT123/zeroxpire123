@@ -35,7 +35,9 @@ import com.google.firebase.storage.ktx.storage
 import my.edu.tarc.zeroxpire.R
 import my.edu.tarc.zeroxpire.WebDB
 import my.edu.tarc.zeroxpire.databinding.FragmentAddIngredientBinding
+import my.edu.tarc.zeroxpire.model.Goal
 import my.edu.tarc.zeroxpire.model.Ingredient
+import my.edu.tarc.zeroxpire.viewmodel.GoalViewModel
 import my.edu.tarc.zeroxpire.viewmodel.IngredientViewModel
 import org.json.JSONArray
 import org.json.JSONObject
@@ -53,6 +55,7 @@ class AddIngredientFragment : Fragment() {
     private var selectedDate: Date? = null // Variable to store the selected date
 
     private val ingredientViewModel: IngredientViewModel by activityViewModels()
+    private val goalViewModel: GoalViewModel by activityViewModels()
 
     private val categoryList = ArrayList<String>()
 
@@ -143,6 +146,7 @@ class AddIngredientFragment : Fragment() {
 
         binding.addBtn.setOnClickListener {
             //TODO: it is not working for those images that taken using camera
+
             storeIngredient()
         }
 
@@ -166,6 +170,7 @@ class AddIngredientFragment : Fragment() {
         binding.chooseCategory.onItemClickListener = AdapterView.OnItemClickListener { _, _, position, _ ->
             val selectedCategory = ingredientCategories[position]
             Toast.makeText(requireContext(), "Selected category: $selectedCategory", Toast.LENGTH_SHORT).show()
+            binding.chooseCategoryLayout.isErrorEnabled = false
         }
 
         // Programmatically open the dropdown list when the user clicks the AutoCompleteTextView
@@ -206,6 +211,7 @@ class AddIngredientFragment : Fragment() {
                 val selectedDateString =
                     SimpleDateFormat("d/M/yyyy", Locale.getDefault()).format(selectedDate)
                 binding.chooseExpiryDate.setText(selectedDateString)
+                binding.chooseExpiryDateLayout.isErrorEnabled = false
             },
             year,
             month,
@@ -221,7 +227,7 @@ class AddIngredientFragment : Fragment() {
         val ingredientCategory = binding.chooseCategory.text.toString()
         Log.d("ingredientCategory", ingredientCategory)
 
-        if (ingredientName.isNotEmpty() && selectedDate != null && checkExist(ingredientName)) {
+        if (ingredientName.isNotEmpty() && selectedDate != null && checkExist(ingredientName) && ingredientCategory.isNotEmpty()) {
             progressDialog = ProgressDialog(requireContext())
             progressDialog?.setMessage("Adding...")
             progressDialog?.setCancelable(false)
@@ -292,19 +298,41 @@ class AddIngredientFragment : Fragment() {
                 binding.enterIngredientName.error = "Ingredient has already exists, choose other name."
                 binding.enterIngredientName.requestFocus()
             }
+            if(ingredientCategory.isEmpty()){
+                binding.chooseCategoryLayout.error = "Please choose the ingredient category."
+                binding.chooseCategoryLayout.requestFocus()
+            }
         }
     }
 
     private fun checkExist(name: String): Boolean {
         val ingredientNameList = mutableListOf<Ingredient>()
+        val ingredientList = ingredientViewModel.ingredientList.value
+        val goalList = goalViewModel.goalList.value
 
-        ingredientViewModel.ingredientList.observe(viewLifecycleOwner, androidx.lifecycle.Observer { ingredients ->
-            ingredients.map {
-                if(it.ingredientName == name){
-                    ingredientNameList.add(it)
+        goalList?.map { goal ->
+            ingredientList?.map { ig->
+                if (goal.goalId == ig.ingredientGoalId && goal.completedDate == null && name == ig.ingredientName ){
+                    ingredientNameList.add(ig)
                 }
+
             }
-        })
+        }
+
+//        ingredientViewModel.ingredientList.observe(viewLifecycleOwner, androidx.lifecycle.Observer { ingredients ->
+//            ingredients.map {ig ->
+//                goalList?.map {
+//                    if(it.goalId == ig.ingredientGoalId){
+//                        if(it.completedDate == null){
+//                            if(ig.ingredientName == name){
+//                                ingredientNameList.add(ig)
+//                            }
+//
+//                        }
+//                    }
+//                }
+//            }
+//        })
 
         return ingredientNameList.size == 0
 

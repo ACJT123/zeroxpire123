@@ -91,8 +91,7 @@ class LoginFragment : Fragment() {
             if (result.resultCode == Activity.RESULT_OK) {
                 val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
                 handleResult(task)
-            }
-            else if(result.resultCode == Activity.RESULT_CANCELED){
+            } else if (result.resultCode == Activity.RESULT_CANCELED) {
                 val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
                 handleResult(task)
             }
@@ -104,8 +103,6 @@ class LoginFragment : Fragment() {
             if (account != null) {
                 updateUI(account)
             }
-        } else {
-            Toast.makeText(requireContext(), task.exception.toString(), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -132,7 +129,8 @@ class LoginFragment : Fragment() {
                 if (progressDialog.isShowing) {
                     progressDialog.dismiss()
                 }
-                Toast.makeText(requireContext(), task.exception.toString(), Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), task.exception.toString(), Toast.LENGTH_SHORT)
+                    .show()
             }
         }
     }
@@ -142,7 +140,8 @@ class LoginFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         // Check if the user was previously logged in and chose to stay logged in
-        val sharedPreferences: SharedPreferences = requireActivity().getSharedPreferences(sharedPrefFile, Context.MODE_PRIVATE)
+        val sharedPreferences: SharedPreferences =
+            requireActivity().getSharedPreferences(sharedPrefFile, Context.MODE_PRIVATE)
         val isLoggedIn = sharedPreferences.getInt("stay_logged_in", 0) == 1
 
         if (isLoggedIn) {
@@ -162,9 +161,6 @@ class LoginFragment : Fragment() {
 
         binding.loginBtn.setOnClickListener {
             normalLogin()
-            findNavController().navigate(R.id.ingredientFragment)
-            findNavController().clearBackStack(R.id.ingredientFragment)
-            enableBtmNav()
         }
 
         navigateBackListeners()
@@ -191,12 +187,6 @@ class LoginFragment : Fragment() {
     }
 
     private fun createUser(account: FirebaseUser?) {
-        val stayLoggedIn = if(binding.stayLoggedInCheckBox.isChecked){
-            1
-        }
-        else{
-            0
-        }
 
         val url = getString(R.string.url_server) + getString(R.string.url_create_user) +
                 "?userId=" + account?.uid +
@@ -260,25 +250,18 @@ class LoginFragment : Fragment() {
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
                         if (progressDialog.isShowing) {
-                            val sharedPreferences: SharedPreferences = requireActivity().getSharedPreferences(sharedPrefFile,Context.MODE_PRIVATE)
-                            val editor: SharedPreferences.Editor = sharedPreferences.edit()
-                            if(binding.stayLoggedInCheckBox.isChecked){
-                                editor.putInt("stay_logged_in", 1)
-                            }
-                            else{
-                                editor.putInt("stay_logged_in", 0)
-                            }
-                            editor.apply()
                             progressDialog.dismiss()
-
-                            val isLoggedIn = sharedPreferences.getInt("stay_logged_in", 0)
-                            Log.d("SharedPref", "stay_logged_in: $isLoggedIn")
+                            findNavController().navigate(R.id.ingredientFragment)
+                            findNavController().clearBackStack(R.id.ingredientFragment)
+                            enableBtmNav()
                         }
                     } else {
-                        if (progressDialog.isShowing) {
-                            progressDialog.dismiss()
-                        }
-                        Toast.makeText(requireContext(), task.exception.toString(), Toast.LENGTH_SHORT).show()
+                        // If sign in fails, display error message to the user.
+                        Toast.makeText(
+                            requireContext(),
+                            task.exception?.message,
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
         } else {
@@ -293,7 +276,8 @@ class LoginFragment : Fragment() {
 
                 // Enable back when the text field is filled
                 binding.enterPassword.doAfterTextChanged {
-                    binding.enterPasswordLayout.endIconMode = TextInputLayout.END_ICON_PASSWORD_TOGGLE
+                    binding.enterPasswordLayout.endIconMode =
+                        TextInputLayout.END_ICON_PASSWORD_TOGGLE
                 }
             }
         }
@@ -305,7 +289,7 @@ class LoginFragment : Fragment() {
     }
 
 
-    private fun enableBtmNav(){
+    private fun enableBtmNav() {
         val view = requireActivity().findViewById<BottomAppBar>(R.id.bottomAppBar)
         view.visibility = View.VISIBLE
 

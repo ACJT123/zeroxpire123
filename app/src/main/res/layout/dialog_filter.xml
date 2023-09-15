@@ -73,6 +73,26 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Seafood" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipEggProducts"
+            app:chipIconEnabled="true"
+            style="@style/CustomChipStyle"
+            app:chipStrokeWidth="1dp"
+            app:chipStrokeColor="@color/textColor"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Egg Products" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipOthers"
+            app:chipIconEnabled="true"
+            style="@style/CustomChipStyle"
+            app:chipStrokeWidth="1dp"
+            app:chipStrokeColor="@color/textColor"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Others" />
     </com.google.android.material.chip.ChipGroup>
 
     <TextView

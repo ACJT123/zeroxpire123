@@ -13,6 +13,8 @@
     <color name="bgColor">#FFFFFFFF</color>
     <color name="secondaryColor">#EAA362</color>
     <color name="btnColor">#7E9F5E</color>
+    <color name="switchTrackColor">#7E9F5E</color>
+    <color name="switchThumbColor">#EFEFEF</color>
     <color name="btnColorDisabled">#6E7E9F5E</color>
     <color name="chip_selected_color">#FF5733</color>
     <color name="chip_unselected_color">#E0E0E0</color>

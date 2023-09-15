@@ -14,10 +14,7 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
 import android.view.View
-import android.widget.Button
-import android.widget.ImageView
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
@@ -39,14 +36,10 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.card.MaterialCardView
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.messaging.FirebaseMessaging
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import my.edu.tarc.zeroxpire.adapters.IngredientAdapter
 import my.edu.tarc.zeroxpire.adapters.RecognitionResultsAdapterDate
 import my.edu.tarc.zeroxpire.adapters.RecognitionResultsAdapterName
@@ -60,7 +53,6 @@ import org.json.JSONObject
 import java.net.UnknownHostException
 import java.text.SimpleDateFormat
 import java.util.*
-import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity(), IngredientClickListener {
     private lateinit var binding: ActivityMainBinding
@@ -103,20 +95,19 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
     // Define a variable to keep track of the count
     private val nearlyExpiredIngredients: MutableList<Ingredient> = mutableListOf()
 
+    // declaring variables
+    lateinit var notificationManager: NotificationManager
+    lateinit var notificationChannel: NotificationChannel
+    private val channelId = "i.apps.notifications"
+    private val description = "Test notification"
+
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
+        auth = FirebaseAuth.getInstance()
         setContentView(binding.root)
-
-        FirebaseMessaging.getInstance().subscribeToTopic("discount-offers")
-            .addOnCompleteListener { task ->
-                toast("Subscribed! You will get all discount offers notifications")
-                if (!task.isSuccessful) {
-                    toast("Failed! Try again.")
-                }
-            }
 
         if (ContextCompat.checkSelfPermission(
                 applicationContext,
@@ -144,6 +135,13 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
 //        createNotificationChannel()
 
         ingredientViewModel = ViewModelProvider(this)[IngredientViewModel::class.java]
+
+        // create shared preference for storing reminterTime value
+        val sharedPref = getSharedPreferences("reminderTime", Context.MODE_PRIVATE)
+        val editor = sharedPref.edit()
+        editor.putInt("reminderTime", 3)
+        editor.apply()
+
 
         // Initialize Firebase Auth
         auth = FirebaseAuth.getInstance()
@@ -268,6 +266,48 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
             }
         }
     }
+//    private val notificationId = 1234 // Unique notification ID
+//    private fun notifications(totalExpiringIngredients: Int) {
+//        notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+//
+//
+//        // pendingIntent is an intent for future use i.e after
+//        // the notification is clicked, this intent will come into action
+//        val intent = Intent(this, MainActivity::class.java)
+//
+//        val pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+//
+//        // checking if android version is greater than oreo(API 26) or not
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//            notificationChannel = NotificationChannel(channelId, description, NotificationManager.IMPORTANCE_HIGH)
+//            notificationChannel.enableVibration(true)
+//            notificationManager.createNotificationChannel(notificationChannel)
+//
+//            builder = Notification.Builder(this, channelId)
+//                .setContentTitle("Hey! Don't Forget!")
+//                .setContentText("$totalExpiringIngredients ingredients are going to expire within 3 days")
+//                .setSmallIcon(R.drawable.final_logo)
+//                .setLargeIcon(BitmapFactory.decodeResource(this.resources, R.drawable.final_logo))
+//                .setContentIntent(pendingIntent)
+//        } else {
+//
+//            builder = Notification.Builder(this)
+//                .setContentTitle("Hey! Don't Forget!")
+//                .setContentText("$totalExpiringIngredients ingredients are going to expire within 3 days")
+//                .setSmallIcon(R.drawable.final_logo)
+//                .setLargeIcon(BitmapFactory.decodeResource(this.resources, R.drawable.final_logo))
+//                .setContentIntent(pendingIntent)
+//        }
+//        // Check if a notification with the same ID is already active
+//        val existingNotification = notificationManager.activeNotifications.find {
+//            it.id == notificationId
+//        }
+//
+//        if (existingNotification == null) {
+//            // No active notification with the same ID, send a new notification
+//            notificationManager.notify(notificationId, builder.build())
+//        }
+//    }
 
     override fun onBackPressed() {
         // Check if the camera option was chosen
@@ -429,33 +469,6 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
     }
 
 
-//    private fun startCameraForDateRecognition() {
-//        // Rest of your camera code for date recognition goes here
-//        progressDialog.setMessage("Processing image")
-//        progressDialog.show()
-//        progressDialog.setCancelable(false)
-//        try {
-//            val inputImage = InputImage.fromFilePath(this, imageUri!!)
-//            progressDialog.setMessage("Recognizing text")
-//
-//            val textTaskResult = textRecognizer.process(inputImage)
-//                .addOnSuccessListener { text ->
-//                    progressDialog.dismiss()
-//
-//                    // Split the recognized text into separate lines or words
-//                    val dates = findAllDatesInText(text.toString())
-//                    val lines = dates.toString().split("\n")
-//                    Log.d("line", lines.toString())
-//
-//                    // Display the recognized lines/words to the user for selection
-//                    displayRecognitionResultsDate(lines)
-//                }
-//        } catch (e: Exception) {
-//            progressDialog.dismiss()
-//            // Handle the exception
-//        }
-//    }
-
     private fun startRecognizeDate() {
         progressDialog.setMessage("Processing image")
         progressDialog.show()
@@ -546,6 +559,13 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
                 // You can show a Toast or set an error message
             }
         }
+
+        val rescanBtn = view.findViewById<Button>(R.id.rescanBtn)
+        rescanBtn.setOnClickListener {
+            dialog.dismiss()
+            byRecognitionDate()
+        }
+
     }
 
     private fun navigateToNextFragment() {
@@ -686,6 +706,7 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
 
 
                         if (size > 0) {
+                            var totalExpiringIngredients = 0
                             for (i in 0 until size) {
                                 val jsonIngredient: JSONObject = jsonArray.getJSONObject(i)
                                 val ingredientId = jsonIngredient.getInt("ingredientId")
@@ -733,8 +754,35 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
                                     }
                                     //checkExpiryAndNotify(ingredient)
                                     ingredientViewModel.addIngredient(ingredient)
+
+                                    val currentDate = Calendar.getInstance().time
+
+                                    // Calculate days until expiry
+                                    val daysUntilExpiry = ((expiryDateInMillis - currentDate.time) / (1000 * 60 * 60 * 24)).toInt() + 1
+
+                                    Log.d("DaysUntilExpiry", daysUntilExpiry.toString())
+
+                                    val sharedPreference =  this.getSharedPreferences("sharedPreference", 0)
+                                    val storedReminderTime = sharedPreference.getInt("reminderTime", 3)
+
+                                    if (daysUntilExpiry <= storedReminderTime && daysUntilExpiry > 0) {
+                                        totalExpiringIngredients++
+                                    }
+
+                                    // if (daysUntilExpiry <= 3 && daysUntilExpiry > 0) {
+                                    //     totalExpiringIngredients++
+                                    // }
+
+
                                     Log.d("IngredientCategory", ingredient.ingredientCategory)
                                 }
+                            }
+
+                            // if the switch state is false from shared preference, then do not schedule notification
+                            val sharedPreference =  this.getSharedPreferences("sharedPreference", 0)
+                            val switchState = sharedPreference.getBoolean("switchState", false)
+                            if(switchState && totalExpiringIngredients > 0){
+                                scheduleNotification(totalExpiringIngredients)
                             }
                         }
 
@@ -769,54 +817,9 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
 
     }
 
-    // Inside your checkExpiryAndNotify function
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun checkExpiryAndNotify(ingredient: Ingredient) {
-        val today = Calendar.getInstance()
-        val expiry = Calendar.getInstance()
-        expiry.timeInMillis = ingredient.expiryDate.time
-
-        val daysDifference = TimeUnit.MILLISECONDS.toDays(expiry.timeInMillis - today.timeInMillis)
-
-        // Customize the threshold for when to notify
-        val notificationThresholdDays = 3
-
-        if (daysDifference in 1..notificationThresholdDays) {
-            // Schedule a notification
-            nearlyExpiredIngredients.add(ingredient)
-            createNotificationChannel()
-            scheduleNotification()
-
-            // Also, you might want to add some logic here to prevent scheduling the same notification multiple times
-        }
-    }
-
-    
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun createNotificationChannel() {
-        // Create a notification channel
-        val channelName = "Notif Channel"
-        val channelDescription = "Description"
-        val importance = NotificationManager.IMPORTANCE_DEFAULT
-        val channel = NotificationChannel(channelID, channelName, importance)
-        channel.description = channelDescription
-
-        // Get the NotificationManager and create the channel
-        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.createNotificationChannel(channel)
-    }
-
-    private fun scheduleNotification() {
+    private fun scheduleNotification(totalExpiringIngredients: Int) {
         val intent = Intent(applicationContext, my.edu.tarc.zeroxpire.Notification::class.java)
-        intent.putExtra("countExtra", nearlyExpiredIngredients.size) // Add count as an extra
-
-        val ingredientNames = ArrayList<String>() // Create a list to store ingredient names
-        for (ingredient in nearlyExpiredIngredients) {
-            ingredientNames.add(ingredient.ingredientName) // Add each ingredient name to the list
-        }
-        intent.putStringArrayListExtra("ingredientNames", ingredientNames) // Pass the list as an extra
-
-        // Create a pending intent with the broadcast intent
+        intent.putExtra("total", totalExpiringIngredients)
         val pendingIntent = PendingIntent.getBroadcast(
             applicationContext,
             notificationID,
@@ -824,22 +827,45 @@ class MainActivity : AppCompatActivity(), IngredientClickListener {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        // Get the AlarmManager to schedule the notification
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-        // Calculate the time to trigger the notification (1 millisecond from current time)
-        val time = Calendar.getInstance().timeInMillis + 1
+        // Get the stored daily reminder time from shared preferences
+        val sharedPreference = this.getSharedPreferences("sharedPreference", 0)
+        val storedReminderTime = sharedPreference.getInt("hourOfDay", 20)
+        val storedReminderMinute = sharedPreference.getInt("minute", 0)
 
-        // Schedule the notification with the AlarmManager
-        alarmManager.setExactAndAllowWhileIdle(
+        // Calculate the time for the next day's notification
+        val currentTime = Calendar.getInstance()
+        val notificationTime = Calendar.getInstance()
+        notificationTime.set(Calendar.HOUR_OF_DAY, storedReminderTime)
+        notificationTime.set(Calendar.MINUTE, storedReminderMinute)
+        notificationTime.set(Calendar.SECOND, 0)
+
+        if (notificationTime.before(currentTime) || notificationTime == currentTime) {
+            // If the desired time has already passed for the current day,
+            // schedule it for the next day
+            notificationTime.add(Calendar.DAY_OF_YEAR, 1)
+        }
+
+        alarmManager.setAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP,
-            time,
+            notificationTime.timeInMillis,
             pendingIntent
         )
     }
 
 
 
+        
+
+    }
+    private fun logg(msg: String){
+        Log.d("MainActivity:",  "$msg")
+    }
 
 
-}
+
+
+
+
+

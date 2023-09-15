@@ -41,7 +41,6 @@ import com.github.mikephil.charting.utils.MPPointF
 import com.google.android.material.bottomappbar.BottomAppBar
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.ktx.oAuthCredential
 import it.xabaras.android.recyclerview.swipedecorator.RecyclerViewSwipeDecorator
 import my.edu.tarc.zeroxpire.MainActivity
 import my.edu.tarc.zeroxpire.R
@@ -51,6 +50,7 @@ import my.edu.tarc.zeroxpire.databinding.FragmentGoalBinding
 import my.edu.tarc.zeroxpire.goal.GoalClickListener
 import my.edu.tarc.zeroxpire.model.Goal
 import my.edu.tarc.zeroxpire.viewmodel.GoalViewModel
+import my.edu.tarc.zeroxpire.viewmodel.IngredientViewModel
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.UnknownHostException
@@ -60,6 +60,7 @@ import java.util.*
 class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener {
     private lateinit var binding: FragmentGoalBinding
     private val goalViewModel: GoalViewModel by activityViewModels()
+    private val ingredientViewModel: IngredientViewModel by activityViewModels()
     private var progressDialog: ProgressDialog? = null
     private lateinit var requestQueue: RequestQueue
     private lateinit var pieChart: PieChart
@@ -251,18 +252,20 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
                 val builder = AlertDialog.Builder(requireContext())
                 builder.setMessage("Are you sure you want to Delete?").setCancelable(false)
                     .setPositiveButton("Delete") { dialog, id ->
-                        progressDialog = ProgressDialog(requireContext())
-                        progressDialog?.setMessage("Deleting...")
-                        progressDialog?.setCancelable(false)
-                        progressDialog?.show()
                         val position = viewHolder.adapterPosition
                         val deletedGoal = adapter.getGoalAt(position)
+                        if(deletedGoal.completedDate != null){
+                            deleteIngredient(deletedGoal.goalId)
+                        }
                         val url = getString(R.string.url_server) + getString(R.string.url_delete_goal) + "?goalId=" + deletedGoal.goalId
                         val jsonObjectRequest = JsonObjectRequest(Request.Method.POST, url, null,
                             { response ->
                                 // Handle successful deletion response, if required
 //                                Toast.makeText(requireContext(), "Goal is deleted successfully.", Toast.LENGTH_SHORT).show()
-                                clearGoalIdForIngredient(deletedGoal.goalId)
+                                if(deletedGoal.completedDate == null){
+                                    clearGoalIdForIngredient(deletedGoal.goalId)
+                                }
+
                             },
                             { error ->
                                 // Handle error response, if required
@@ -306,6 +309,29 @@ class GoalFragment : Fragment(), OnChartValueSelectedListener, GoalClickListener
         }
         val itemTouchHelper = ItemTouchHelper(itemTouchHelperCallback)
         itemTouchHelper.attachToRecyclerView(binding.goalRecyclerview)
+    }
+
+    private fun deleteIngredient(goalId: Int) {
+        progressDialog = ProgressDialog(requireContext())
+        progressDialog?.setMessage("Deleting...")
+        progressDialog?.setCancelable(false)
+        progressDialog?.show()
+
+        val url = getString(R.string.url_server) + getString(R.string.url_deleteIngredientWithGoalId) + "?goalId=" + goalId
+
+        val jsonObjectRequest = JsonObjectRequest(Request.Method.POST, url, null,
+            { response ->
+                // Handle successful deletion response, if required
+                progressDialog?.dismiss()
+
+            },
+            { error ->
+                // Handle error response, if required
+                Log.d("FK", "Error Response: ${error.message}")
+            }
+        )
+
+        requestQueue.add(jsonObjectRequest)
     }
 
     private fun clearGoalIdForIngredient(goalId: Int) {

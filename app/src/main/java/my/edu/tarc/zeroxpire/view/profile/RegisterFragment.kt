@@ -51,6 +51,13 @@ class RegisterFragment : Fragment() {
             val password = binding.enterPassword.text.toString()
 
             if (email.isNotEmpty() && password.isNotEmpty() && username.isNotEmpty()) {
+                //validate email with regex
+                val emailRegex = Regex("^[\\w-.]+@([\\w-]+\\.)+[\\w-]{2,4}\$")
+                if (!emailRegex.matches(email)) {
+                    binding.enterEmail.error = "Please enter a valid email address."
+                    binding.enterEmail.requestFocus()
+                    return@setOnClickListener
+                }
                 createUserWithEmailAndPassword(email, password)
             }
             else {
@@ -58,11 +65,11 @@ class RegisterFragment : Fragment() {
                     binding.enterUsername.error = "Please enter the username."
                     binding.enterUsername.requestFocus()
                 }
-                if (email.isEmpty()) {
+                else if (email.isEmpty()) {
                     binding.enterEmail.error = "Please enter the email address."
                     binding.enterEmail.requestFocus()
                 }
-                if (password.isEmpty()) {
+                else if (password.isEmpty()) {
                     binding.enterPasswordLayout.endIconMode = TextInputLayout.END_ICON_NONE
                     binding.enterPassword.error = "Please enter the password."
                     binding.enterPassword.requestFocus()
@@ -112,7 +119,8 @@ class RegisterFragment : Fragment() {
                     if (progressDialog.isShowing) {
                         progressDialog.dismiss()
                     }
-                    showToast("Failed to create the account.")
+                    // show the error message
+                    showToast(task.exception?.message.toString())
                 }
             }
     }

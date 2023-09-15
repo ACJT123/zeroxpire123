@@ -1,7 +1,9 @@
 package my.edu.tarc.zeroxpire.view.profile
 
 import android.app.AlertDialog
+import android.app.ProgressDialog
 import android.os.Bundle
+import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
@@ -12,6 +14,8 @@ import androidx.core.os.bundleOf
 import androidx.fragment.app.setFragmentResult
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import com.android.volley.Request
+import com.android.volley.toolbox.JsonObjectRequest
 import com.bumptech.glide.Glide
 import com.google.android.material.bottomappbar.BottomAppBar
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -21,12 +25,14 @@ import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import my.edu.tarc.zeroxpire.R
+import my.edu.tarc.zeroxpire.WebDB
 import my.edu.tarc.zeroxpire.databinding.FragmentProfileBinding
 import my.edu.tarc.zeroxpire.model.IngredientDatabase
+import org.json.JSONObject
 
 class ProfileFragment : Fragment() {
     private lateinit var binding: FragmentProfileBinding
-
+    private lateinit var progressDialog: ProgressDialog
     private lateinit var auth: FirebaseAuth
     private var profilePictureUrl: String? = ""
     private var username: String? = ""
@@ -135,18 +141,46 @@ class ProfileFragment : Fragment() {
     }
 
     private fun deleteAcc() {
-        Firebase.auth.currentUser?.delete()?.addOnCompleteListener { task ->
-            if(task.isSuccessful){
-                findNavController().navigate(R.id.loginFragment)
-                lifecycleScope.launch(Dispatchers.IO) {
-                    ingredientDatabase.deleteAllIngredient()
+        progressDialog = ProgressDialog(requireContext())
+        progressDialog?.setMessage("Deleting...")
+        progressDialog?.setCancelable(false)
+        progressDialog?.show()
+        val url = getString(R.string.url_server) + getString(R.string.url_delete_user) + "?userId=" + auth.currentUser?.uid
+        val jsonObjectRequest = JsonObjectRequest(
+            Request.Method.POST, url, null,
+            { response ->
+                try {
+                    if (response != null) {
+                        val strResponse = response.toString()
+                        val jsonResponse = JSONObject(strResponse)
+                        val success: String = jsonResponse.get("success").toString()
+
+                        if (success == "1") {
+                            Firebase.auth.currentUser?.delete()?.addOnCompleteListener { task ->
+                                if(task.isSuccessful){
+                                    findNavController().navigate(R.id.loginFragment)
+                                    lifecycleScope.launch(Dispatchers.IO) {
+                                        ingredientDatabase.deleteAllIngredient()
+                                    }
+                                    disableBtmNav()
+                                    Toast.makeText(requireContext(), "Account is deleted successfully", Toast.LENGTH_SHORT).show()
+                                    progressDialog.dismiss()
+                                } else{
+                                    Toast.makeText(requireContext(), task.exception.toString(), Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.d("AddIngredientFragment", "Response: %s".format(e.message.toString()))
                 }
-                disableBtmNav()
-                Toast.makeText(requireContext(), "Account is deleted successfully", Toast.LENGTH_SHORT).show()
-            } else{
-                Toast.makeText(requireContext(), task.exception.toString(), Toast.LENGTH_SHORT).show()
+            },
+            { error ->
+                Log.d("AddIngredientFragmentID", "Response : %s".format(error.message.toString()))
             }
-        }
+        )
+
+        WebDB.getInstance(requireContext()).addToRequestQueue(jsonObjectRequest)
     }
 
     private fun disableBtmNav(){
